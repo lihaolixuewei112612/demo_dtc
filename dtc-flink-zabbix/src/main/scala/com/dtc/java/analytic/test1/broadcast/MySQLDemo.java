@@ -11,7 +11,7 @@ public class MySQLDemo {
 
     // MySQL 8.0 以下版本 - JDBC 驱动名及数据库 URL
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-    static final String DB_URL = "jdbc:mysql://10.3.7.234:3306/zabbix";
+    static final String DB_URL = "jdbc:mysql://172.20.10.2:3306/zabbix";
 
     // MySQL 8.0 以上版本 - JDBC 驱动名及数据库 URL
     //static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
@@ -19,8 +19,8 @@ public class MySQLDemo {
 
 
     // 数据库的用户名与密码，需要根据自己的设置
-    static final String USER = "zabbix";
-    static final String PASS = "zabbix";
+    static final String USER = "root";
+    static final String PASS = "123456";
 
     public static void main(String[] args) {
         Connection conn = null;
