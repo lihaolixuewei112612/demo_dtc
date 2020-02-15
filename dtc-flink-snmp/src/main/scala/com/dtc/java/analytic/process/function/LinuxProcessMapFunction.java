@@ -2,6 +2,7 @@ package com.dtc.java.analytic.process.function;
 
 import com.dtc.java.analytic.common.model.ResultMetricEvent;
 import com.dtc.java.analytic.configuration.NumberTest;
+import com.dtc.java.analytic.snmp.DataStruct;
 import com.dtc.java.analytic.snmp.StreamToFlink;
 import com.esotericsoftware.minlog.Log;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +25,10 @@ import java.util.Set;
  * @author :hao.li
  */
 @Slf4j
-public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String, String, String, String, String, String>, Tuple6<String, String, String, String, String, String>, Tuple, TimeWindow> {
+public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, DataStruct, Tuple, TimeWindow> {
 
     @Override
-    public void process(Tuple tuple, Context context, Iterable<Tuple6<String, String, String, String, String, String>> elements, Collector<Tuple6<String, String, String, String, String, String>> collector)
+    public void process(Tuple tuple, Context context, Iterable<DataStruct> elements, Collector<DataStruct> collector)
             throws Exception {
         DecimalFormat df = new DecimalFormat(".0000");
 
@@ -52,25 +53,25 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
         //网卡发包数量的数组
         Map net_packets_recv = new HashMap<String, String>();
 
-        for (Tuple6<String, String, String, String, String, String> in : elements) {
+        for (DataStruct in : elements) {
 
             //判断是否是数据
-            boolean strResult = in.f5.matches("-?[0-9]+.*[0-9]*");
+            boolean strResult = in.getValue().matches("-?[0-9]+.*[0-9]*");
             if (!strResult) {
-                log.info("value is not number of string!" + in.f5);
+                log.info("value is not number of string!" + in.getValue());
             } else {
                 /**
                  *  主机系统参数：系统启动时间
                  */
-                if ("101_101_101_106_106".equals(in.f2)) {
-                    if (in.f5.contains(",")) {
-                        String day = in.f5.split(",")[0];
+                if ("101_101_101_106_106".equals(in.getZbFourName())) {
+                    if (in.getTime().contains(",")) {
+                        String day = in.getTime().split(",")[0];
                         String result = day.split("\\s+")[0];
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, result));
+                        collector.collect(new DataStruct(in.getSystem_name(),in.getHost(),in.getZbFourName(),in.getZbLastCode(),in.getNameCN(),in.getNameEN(),in.getTime(),result));
                         continue;
                     } else {
-                        String hour = in.f5.split(":")[0];
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, hour));
+                        String hour = in.getTime().split(":")[0];
+                        collector.collect(new DataStruct(in.getSystem_name(),in.getHost(),in.getZbFourName(),in.getZbLastCode(),in.getNameCN(),in.getNameEN(),in.getTime(),hour));
                         continue;
                     }
                 }
@@ -78,25 +79,24 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                 /**
                  *   主机网络接口状态：获取网络接口数量
                  */
-                if ("101_101_101_109_109".equals(in.f2)) {
-                    netCardNumber = Integer.parseInt(in.f5);
-                    collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, in.f5));
+                if ("101_101_101_109_109".equals(in.getZbFourName())) {
+                    netCardNumber = Integer.parseInt(in.getValue());
+                    collector.collect(new DataStruct(in.getSystem_name(),in.getHost(),in.getZbFourName(),in.getZbLastCode(),in.getNameCN(),in.getNameEN(),in.getTime(),in.getValue()));
                     continue;
                 }
                 /**
                  * cpu的平均load值:1min/5min/15min
                  * */
-                if (in.f2.equals("101_101_101_101_101") || in.f2.equals("101_101_101_102_102") || in.f2.equals("101_101_101_103_103")) {
-
-                    collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, in.f5));
+                if ("101_101_101_101_101".equals(in.getZbFourName()) || "101_101_101_102_102".equals(in.getZbFourName()) || "101_101_101_103_103".equals(in.getZbFourName())) {
+                    collector.collect(new DataStruct(in.getSystem_name(),in.getHost(),in.getZbFourName(),in.getZbLastCode(),in.getNameCN(),in.getNameEN(),in.getTime(),in.getValue()));
                     continue;
                 }
 
 
                 //网卡发包总数(M)
-                if ("101_101_103_101_101".equals(in.f2)) {
+                if ("101_101_103_101_101".equals(in.getZbFourName())) {
                     if (net_bytes_sent.size() != netCardNumber || netCardNumber == 0) {
-                        net_bytes_sent.put(in.f2 + "_" + in.f3, in.f5);
+                        net_bytes_sent.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_bytes_sent.keySet();
@@ -104,15 +104,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_bytes_sent.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result / 1048576 + ""));
                         net_bytes_sent.clear();
                         continue;
                     }
                 }
                 //网卡收包总数(M)
-                if ("101_101_103_103_103".equals(in.f2)) {
+                if ("101_101_103_103_103".equals(in.getZbFourName())) {
                     if (net_bytes_recv.size() != netCardNumber || netCardNumber == 0) {
-                        net_bytes_recv.put(in.f2 + "_" + in.f3, in.f5);
+                        net_bytes_recv.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_bytes_recv.keySet();
@@ -120,15 +120,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_bytes_recv.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result / 1048576 + ""));
                         net_bytes_recv.clear();
                         continue;
                     }
                 }
                 //网卡发包总数量（个）
-                if (in.f2.contains("101_101_103_105")) {
+                if ("101_101_103_105".equals(in.getZbFourName())) {
                     if (net_packets_sent.size() != netCardNumber * 2 || netCardNumber == 0) {
-                        net_packets_sent.put(in.f2 + "_" + in.f3, in.f5);
+                        net_packets_sent.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_packets_sent.keySet();
@@ -136,15 +136,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_packets_sent.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result / 1048576 + ""));
                         net_packets_sent.clear();
                         continue;
                     }
                 }
                 //网卡收包总数量（个）
-                if (in.f2.contains("101_101_103_106")) {
+                if ("101_101_103_106".equals(in.getZbFourName())) {
                     if (net_packets_recv.size() != netCardNumber * 2 || netCardNumber == 0) {
-                        net_packets_recv.put(in.f2 + "_" + in.f3, in.f5);
+                        net_packets_recv.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_packets_recv.keySet();
@@ -152,15 +152,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_packets_recv.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result / 1048576 + ""));
                         net_packets_recv.clear();
                         continue;
                     }
                 }
                 //网卡收包错误数量（个）
-                if ("101_101_103_107_109".equals(in.f2)) {
+                if ("101_101_103_107_109".equals(in.getZbFourName())) {
                     if (net_err_in.size() != netCardNumber || netCardNumber == 0) {
-                        net_err_in.put(in.f2 + "_" + in.f3, in.f5);
+                        net_err_in.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_err_in.keySet();
@@ -168,15 +168,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_err_in.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result / 1048576 + ""));
                         net_err_in.clear();
                         continue;
                     }
                 }
                 //网卡发包错误数量（个）
-                if ("101_101_103_108_110".equals(in.f2)) {
+                if ("101_101_103_108_110".equals(in.getZbFourName())) {
                     if (net_err_out.size() != netCardNumber || netCardNumber == 0) {
-                        net_err_out.put(in.f2 + "_" + in.f3, in.f5);
+                        net_err_out.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_err_out.keySet();
@@ -184,15 +184,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_err_out.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result + ""));
                         net_err_out.clear();
                         continue;
                     }
                 }
                 //网卡收丢包数量（个）
-                if ("101_101_103_109_111".equals(in.f2)) {
+                if ("101_101_103_109_111".equals(in.getZbFourName())) {
                     if (net_drop_in.size() != netCardNumber || netCardNumber == 0) {
-                        net_drop_in.put(in.f2 + "_" + in.f3, in.f5);
+                        net_drop_in.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_drop_in.keySet();
@@ -200,15 +200,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_drop_in.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result + ""));
                         net_drop_in.clear();
                         continue;
                     }
                 }
                 //网卡发丢包数量（个）
-                if ("101_101_103_110_112".equals(in.f2)) {
+                if ("101_101_103_110_112".equals(in.getZbFourName())) {
                     if (net_drop_out.size() != netCardNumber || netCardNumber == 0) {
-                        net_drop_out.put(in.f2 + "_" + in.f3, in.f5);
+                        net_drop_out.put(in.getZbFourName() + "_" + in.getZbLastCode(), in.getValue());
                         continue;
                     } else {
                         Set<String> set = net_drop_out.keySet();
@@ -216,7 +216,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         for (String key : set) {
                             result += Double.parseDouble(net_drop_out.get(key).toString());
                         }
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),result + ""));
                         net_drop_in.clear();
                         continue;
                     }
@@ -226,10 +226,10 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                  *  主机内存:内存处理逻辑 包括内存总量/空闲内存/已用内存/内存使用率/内存空闲率
                  */
 
-                if ("101_101_104_101_101".equals(in.f2)) {
+                if ("101_101_104_101_101".equals(in.getZbFourName())) {
                     if (cpuMap.containsKey("101_101_104_105_105") && cpuMap.containsKey("101_101_104_103_103") && cpuMap.containsKey("101_101_104_104_104")) {
                         //原始内存数据，单位为Kb
-                        double mem_total = Double.parseDouble(in.f5);
+                        double mem_total = Double.parseDouble(in.getValue());
                         double mem_available = Double.parseDouble(cpuMap.get("101_101_104_105_105").toString());
                         double mem_buffered = Double.parseDouble(cpuMap.get("101_101_104_103_103").toString());
                         double mem_cached = Double.parseDouble(cpuMap.get("101_101_104_104_104").toString());
@@ -239,14 +239,14 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         cpuMap.remove("101_101_104_104_104");
                         continue;
                     } else {
-                        cpuMap.put("101_101_104_101_101", in.f5);
+                        cpuMap.put("101_101_104_101_101", in.getValue());
                         continue;
                     }
                 }
-                if ("101_101_104_105_105".equals(in.f2)) {
+                if ("101_101_104_105_105".equals(in.getZbFourName())) {
                     if (cpuMap.containsKey("101_101_104_101_101") && cpuMap.containsKey("101_101_104_103_103") && cpuMap.containsKey("101_101_104_104_104")) {
                         double mem_total = Double.parseDouble(cpuMap.get("101_101_104_101_101").toString());
-                        double mem_available = Double.parseDouble(in.f5);
+                        double mem_available = Double.parseDouble(in.getValue());
                         double mem_buffered = Double.parseDouble(cpuMap.get("101_101_104_103_103").toString());
                         double mem_cached = Double.parseDouble(cpuMap.get("101_101_104_104_104").toString());
                         getCpuInfo(collector, df, in, mem_total, mem_available, mem_buffered, mem_cached);
@@ -255,15 +255,15 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         cpuMap.remove("101_101_104_104_104");
                         continue;
                     } else {
-                        cpuMap.put("101_101_104_105_105", in.f5);
+                        cpuMap.put("101_101_104_105_105", in.getValue());
                         continue;
                     }
                 }
-                if ("101_101_104_103_103".equals(in.f2)) {
+                if ("101_101_104_103_103".equals(in.getZbFourName())) {
                     if (cpuMap.containsKey("101_101_104_101_101") && cpuMap.containsKey("101_101_104_105_105") && cpuMap.containsKey("101_101_104_104_104")) {
                         double mem_total = Double.parseDouble(cpuMap.get("101_101_104_101_101").toString());
                         double mem_available = Double.parseDouble(cpuMap.get("101_101_104_105_105").toString());
-                        double mem_buffered = Double.parseDouble(in.f5);
+                        double mem_buffered = Double.parseDouble(in.getValue());
                         double mem_cached = Double.parseDouble(cpuMap.get("101_101_104_104_104").toString());
                         getCpuInfo(collector, df, in, mem_total, mem_available, mem_buffered, mem_cached);
                         cpuMap.remove("101_101_104_101_101");
@@ -271,31 +271,31 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
                         cpuMap.remove("101_101_104_104_104");
                         continue;
                     } else {
-                        cpuMap.put("101_101_104_103_103", in.f5);
+                        cpuMap.put("101_101_104_103_103", in.getValue());
                         continue;
                     }
                 }
-                if ("101_101_104_104_104".equals(in.f2)) {
+                if ("101_101_104_104_104".equals(in.getZbFourName())) {
                     if (cpuMap.containsKey("101_101_104_101_101") && cpuMap.containsKey("101_101_104_105_105") && cpuMap.containsKey("101_101_104_103_103")) {
                         double mem_total = Double.parseDouble(cpuMap.get("101_101_104_101_101").toString());
                         double mem_available = Double.parseDouble(cpuMap.get("101_101_104_105_105").toString());
                         double mem_buffered = Double.parseDouble(cpuMap.get("101_101_104_103_103").toString());
-                        double mem_cached = Double.parseDouble(in.f5);
+                        double mem_cached = Double.parseDouble(in.getValue());
                         getCpuInfo(collector, df, in, mem_total, mem_available, mem_buffered, mem_cached);
                         cpuMap.remove("101_101_104_101_101");
                         cpuMap.remove("101_101_104_105_105");
                         cpuMap.remove("101_101_104_104_104");
                         continue;
                     } else {
-                        cpuMap.put("101_101_104_104_104", in.f5);
+                        cpuMap.put("101_101_104_104_104", in.getValue());
                         continue;
                     }
                 }
 
                 //空闲内存换成MB单位
-                if ("101_101_104_106_106".equals(in.f2)) {
-                    String result = Double.parseDouble(in.f5) / 1024 + "";
-                    collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, result));
+                if ("101_101_104_106_106".equals(in.getZbFourName())) {
+                    String result = Double.parseDouble(in.getValue()) / 1024 + "";
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),result));
                     continue;
                 }
 
@@ -303,51 +303,59 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
         主机swap空间
          */
                 //Linux的Swap使用空间占比
-                if ("101_101_105_101_101".equals(in.f2)) {
+                if ("101_101_105_101_101".equals(in.getZbFourName())) {
                     if (swapMap.containsKey("101_101_105_102_102")) {
-                        double swap_total = Double.parseDouble(in.f5);
+                        double swap_total = Double.parseDouble(in.getValue());
                         double swap_used = Double.parseDouble(swapMap.get("101_101_105_102_102").toString());
                         //swap总量
                         String swapTotal_M = df.format(swap_total / 1024d);
-                        collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, swapTotal_M));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapTotal_M));
+
                         //swap使用量
                         String swapUsed_M = df.format(swap_used / 1024d);
-                        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_102_102", "000", in.f4, swapUsed_M));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_102_102", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapUsed_M));
+
                         //swap空闲
                         String swapFree_M = df.format((swap_total - swap_used) / 1024d);
-                        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_103_103", "000", in.f4, swapFree_M));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_103_103", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapFree_M));
+
                         //swap使用率
                         String swapRate = df.format((swap_used / swap_total) * 100);
-                        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_104_104", "000", in.f4, swapRate));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_104_104", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapRate));
+
                         swapMap.remove("101_101_105_102_102");
                         continue;
                     } else {
-                        swapMap.put("101_101_105_102_102", in.f5);
+                        swapMap.put("101_101_105_102_102", in.getValue());
                         continue;
                     }
 
                 }
             }
-            if ("101_101_105_102_102".equals(in.f2)) {
+            if ("101_101_105_102_102".equals(in.getZbFourName())) {
                 if (swapMap.containsKey("101_101_105_101_101")) {
                     double swap_total = Double.parseDouble(swapMap.get("101_101_105_101_101").toString());
-                    double swap_used = Double.parseDouble(in.f5);
+                    double swap_used = Double.parseDouble(in.getValue());
                     //swap总量
                     String swapTotal_M = df.format(swap_total / 1024d);
-                    collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_101_101", "000", in.f4, swapTotal_M));
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_101_101", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapTotal_M));
+
                     //swap使用量
                     String swapUsed_M = df.format(swap_used / 1024d);
-                    collector.collect(Tuple6.of(in.f0, in.f1, in.f2, "000", in.f4, swapUsed_M));
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapUsed_M));
+
                     //swap空闲
                     String swapFree_M = df.format((swap_total - swap_used) / 1024d);
-                    collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_103_103", "000", in.f4, swapFree_M));
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_103_103", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapFree_M));
+
                     //swap使用率
                     String swapRate = df.format((swap_used / swap_total) * 100);
-                    collector.collect(Tuple6.of(in.f0, in.f1, "101_101_105_104_104", "000", in.f4, swapRate));
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_104_104", "000", in.getNameCN(),in.getNameEN(), in.getTime(),swapRate));
+
                     swapMap.remove("101_101_105_101_101");
                     continue;
                 } else {
-                    swapMap.put("101_101_105_101_101", in.f5);
+                    swapMap.put("101_101_105_101_101", in.getValue());
                     continue;
                 }
             }
@@ -355,30 +363,31 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
              * cpu
              *
              * */
-            if ("101_101_106_101_101".equals(in.f2) || "101_101_106_102_102".equals(in.f2)) {
-                collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, in.f5));
+            if ("101_101_106_101_101".equals(in.getZbFourName()) || "101_101_106_102_102".equals(in.getZbFourName())) {
+                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),in.getValue()));
+
                 continue;
             }
-            if ("101_101_106_103_103".equals(in.f2)) {
-                double cpuUsedRate = 100d - Double.parseDouble(in.f5);
+            if ("101_101_106_103_103".equals(in.getZbFourName())) {
+                double cpuUsedRate = 100d - Double.parseDouble(in.getValue());
                 String result = String.valueOf(cpuUsedRate);
-                collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, result));
+                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),result));
                 continue;
             }
 
             /**
              * 主机磁盘
              */
-            if ("101_101_107_104_104".equals(in.f2) || "101_101_107_105_105".equals(in.f2) || "101_101_107_106_106".equals(in.f2)) {
-                String result = Double.parseDouble(in.f5) / 1048576 + "";
-                collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, result));
+            if ("101_101_107_104_104".equals(in.getZbFourName()) || "101_101_107_105_105".equals(in.getZbFourName()) || "101_101_107_106_106".equals(in.getZbFourName())) {
+                String result = Double.parseDouble(in.getValue()) / 1048576 + "";
+                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),result));
                 continue;
             }
             /**
              * 磁盘使用率
              * */
-            if("101_101_107_107_107".equals(in.f2)){
-                collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, in.f5));
+            if("101_101_107_107_107".equals(in.getZbFourName())){
+                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),in.getValue()));
                 continue;
             }
 
@@ -640,7 +649,8 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
 //                if (getMessage_Two(collector, map, in, "102_104_102_103", "104", "105")) continue;
 
 
-            collector.collect(Tuple6.of(in.f0, in.f1, in.f2, in.f3, in.f4, in.f5));
+
+            collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(),in.getNameEN(), in.getTime(),in.getValue()));
         }
 
     }
@@ -649,33 +659,38 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<Tuple6<String
     /**
      * 主机内存:内存处理逻辑 包括内存总量/空闲内存/已用内存/内存使用率/内存空闲率
      */
-    private void getCpuInfo(Collector<Tuple6<String, String, String, String, String, String>> collector, DecimalFormat df, Tuple6<String, String, String, String, String, String> in, double mem_total, double mem_available, double mem_buffered, double mem_cached) {
+    private void getCpuInfo(Collector<DataStruct> collector, DecimalFormat df, DataStruct in, double mem_total, double mem_available, double mem_buffered, double mem_cached) {
         double mem_used = mem_total - mem_available - mem_buffered - mem_cached;
         //总内存--单位MB
         String memoryTotal_M = df.format(mem_total / 1024d);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_101_101", "000", in.f4, memoryTotal_M));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_101_101", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryTotal_M));
+
         //可获取内存--单位MB
         String memoryAvailable = df.format(mem_available / 1024d);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_105_105", "000", in.f4, memoryAvailable));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_105_105", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryAvailable));
 
         //buffer内存
         String memoryBuffer = df.format(mem_buffered / 1024d);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_103_103", "000", in.f4, memoryBuffer));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_103_103", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryBuffer));
 
         //缓存内存
         String memoryCached = df.format(mem_cached / 1024d);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_104_104", "000", in.f4, memoryCached));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_104_104", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryCached));
+
 
         //已用内存--单位MB
         String memoryUsed_M = df.format((mem_total - mem_available - mem_buffered - mem_cached) / 1024d);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_102_102", "000", in.f4, memoryUsed_M));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_102_102", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryUsed_M));
+
 
         //内存使用率
         String memoryUsedRate = String.valueOf(mem_used / mem_total * 100);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_109_109", "000", in.f4, memoryUsedRate));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_109_109", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryUsedRate));
+
         //内存空闲率
         String memoryFreeRate = String.valueOf(100 - (mem_used / mem_total) * 100);
-        collector.collect(Tuple6.of(in.f0, in.f1, "101_101_104_110_110", "000", in.f4, memoryFreeRate));
+        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_110_110", "000", in.getNameCN(),in.getNameEN(), in.getTime(),memoryFreeRate));
+
     }
 }
 

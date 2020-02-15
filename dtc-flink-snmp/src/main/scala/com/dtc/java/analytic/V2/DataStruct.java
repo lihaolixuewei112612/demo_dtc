@@ -1,4 +1,4 @@
-package com.dtc.java.analytic.snmp;
+package com.dtc.java.analytic.V2;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

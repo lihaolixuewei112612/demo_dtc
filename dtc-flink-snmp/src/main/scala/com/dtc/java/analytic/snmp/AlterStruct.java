@@ -5,14 +5,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Created on 2019-08-12
+ * Created on 2020-02-15
  *
  * @author :hao.li
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DataStruct {
+public class AlterStruct {
     private String System_name;
     private String Host;
     private String zbFourName;
@@ -21,4 +21,7 @@ public class DataStruct {
     private String nameEN;
     private String time;
     private String value;
+    private String level;
+    private String unique_id;
+    private String yuzhi;
 }

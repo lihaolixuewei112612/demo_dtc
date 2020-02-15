@@ -1,5 +1,6 @@
 package com.dtc.java.analytic.common.watermarks;
 
+import com.dtc.java.analytic.snmp.DataStruct;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.java.tuple.Tuple6;
@@ -11,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 
-public class DtcPeriodicAssigner implements AssignerWithPeriodicWatermarks<Tuple6<String, String, String, String, String, String>> {
+public class DtcPeriodicAssigner implements AssignerWithPeriodicWatermarks<DataStruct> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DtcPeriodicAssigner.class);
 
@@ -34,8 +35,8 @@ public class DtcPeriodicAssigner implements AssignerWithPeriodicWatermarks<Tuple
     }
 
     @Override
-    public long extractTimestamp(Tuple6<String, String, String, String, String, String> s, long l) {
-        long timestamp = Long.parseLong(s.f4);
+    public long extractTimestamp(DataStruct s, long l) {
+        long timestamp = Long.parseLong(s.getTime());
         return timestamp;
     }
 }

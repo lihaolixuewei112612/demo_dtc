@@ -1,8 +1,8 @@
-package com.dtc.java.analytic.alter;
+package com.dtc.java.analytic.V2;
 
 
+import com.dtc.java.analytic.alter.MySQLUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;

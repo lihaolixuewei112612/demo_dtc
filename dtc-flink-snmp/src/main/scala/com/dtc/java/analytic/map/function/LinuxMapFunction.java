@@ -1,5 +1,6 @@
 package com.dtc.java.analytic.map.function;
 
+import com.dtc.java.analytic.snmp.DataStruct;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple6;
 
@@ -8,18 +9,26 @@ import org.apache.flink.api.java.tuple.Tuple6;
  *
  * @author :hao.li
  */
-public class LinuxMapFunction implements MapFunction<Tuple6<String, String, String, String, String, String>, Tuple6<String, String, String, String, String, String>> {
-
-    @Override
-    public Tuple6<String, String, String, String, String, String> map(Tuple6<String, String, String, String, String, String> event) throws Exception {
-
-        if (event.f3.contains(".")) {
-            String lastCode = event.f3.split("\\.", 2)[0];
-            String nameCode = event.f3.split("\\.", 2)[1];
-            String result = event.f2 + "_" + lastCode;
-            return Tuple6.of(event.f0 + "|linux_0", event.f1, result, nameCode, event.f4, event.f5);
+public class LinuxMapFunction implements MapFunction<DataStruct, DataStruct> {
+/*
+* private String System_name;
+    private String Host;
+    private String zbFourName;
+    private String zbLastCode;
+    private String nameCN;
+    private String nameEN;
+    private String time;
+    private String value;
+* */    @Override
+    public DataStruct map(DataStruct event) throws Exception {
+        String zbLastCode = event.getZbLastCode();
+        if (zbLastCode.contains(".")) {
+            String lastCode =zbLastCode.split("\\.", 2)[0];
+            String nameCode = zbLastCode.split("\\.", 2)[1];
+            String result = event.getZbFourName() + "_" + lastCode;
+            return new DataStruct(event.getSystem_name() + "|linux_0",event.getHost(),result,nameCode,event.getNameCN(),event.getNameEN(),event.getTime(),event.getValue());
         } else {
-            return Tuple6.of(event.f0 + "|linux_1", event.f1, event.f2 + "_" + event.f3, event.f3, event.f4, event.f5);
+            return new DataStruct(event.getSystem_name() + "|linux_1",event.getHost(),event.getZbFourName()+"_"+event.getZbLastCode(),event.getZbLastCode(),event.getNameCN(),event.getNameEN(),event.getTime(),event.getValue());
         }
     }
 }

@@ -1,5 +1,6 @@
-package com.dtc.java.analytic.alter;
+package com.dtc.java.analytic.V2;
 
+import com.alibaba.fastjson.JSON;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 
 import java.text.SimpleDateFormat;
@@ -13,17 +14,17 @@ import java.util.Random;
  *
  * @author :hao.li
  */
-public class MySourceEvent extends RichSourceFunction<String> {
+public class MySourceEvent extends RichSourceFunction<SourceEventDev> {
     private boolean running = true;
     Random rand = new Random();
     List channel = Arrays.asList("1.2.3.4.5", "1.2.3.4.6", "1.2.3.4.7", "1.2.3.4.8");
 
     @Override
-    public void run(SourceContext<String> ctx) throws Exception {
+    public void run(SourceContext<SourceEventDev> ctx) throws Exception {
         Long numElements = Long.MAX_VALUE;
         Long count = 0L;
         while (running && count < numElements) {
-            String s = generateEvent();
+            SourceEventDev s = generateEvent();
             String str = "{\"labels\":{\"__name__\":\"oracledb_resource_current_utilization\",\"instance\":\"10.3.7.231:9161\",\"job\":\"consul\",\"resource_name\":\"gcs_shadows\"},\"name\":\"oracledb_resource_current_utilization\",\"timestamp\":\"2019-08-23T06:40:52Z\",\"value\":\"0\"}";
 //            String str = generateEvent();
             ctx.collect(s);
@@ -31,7 +32,7 @@ public class MySourceEvent extends RichSourceFunction<String> {
         }
 
     }
-    private String generateEvent(){
+    private SourceEventDev generateEvent(){
         String s = readableDate();
         String str = channel.get(rand.nextInt(4)).toString();
         int value = rand.nextInt(9);
@@ -42,11 +43,10 @@ public class MySourceEvent extends RichSourceFunction<String> {
 
         //{"time":"1581691002687","code":"101_101_107_105_105","host":"10.3.7.234","nameCN":"磁盘剩余大小","value":"217802544","nameEN":"disk_free"}
 
-
-        String message = "{" + "\"code\"" + ":" + "\"" + 101 + "_" + 101 + "_" + 101 + "_" + 10 + next + "_" + 10 + next + "\"" + "," + "\"host\"" + ":" + "\"" + str +
-                "\"" + "," + "\"" + "time" + "\"" + ":" + "\"" + s + "\"" + "," + "\"" + "value" + "\"" + ":" +
-                "\"" + result + "\"" +","+"\""+"\"nameCN\""+":"+"\""+"磁盘剩余大小"+"\""+","+"\""+"nameEN"+"\""+":"+"\""+"disk_free"+"\""+"}";
-        return message;
+        String message = "{\"code\" : \"101_101_101_10" + next + "_10" + next+ "\",\"host\":\"" + str +
+                "\",\"time\":" + "\"" + s + "\"" + ",\"value\":\"" + result + "\",\"name_CN\":\"磁盘剩余大小\",\"name_EN\":\"disk_free\"}";
+        SourceEventDev ds = JSON.parseObject(message, SourceEventDev.class);
+        return ds;
     }
     private String readableDate(){
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
