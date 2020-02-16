@@ -110,30 +110,62 @@ public class StreamToFlinkV3 {
                 .process(getLinuxFunction());
 
         AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
-        Pattern<AlterStruct, ?> loginFail =
+        Pattern<AlterStruct, ?> alarmGrade =
                 Pattern.<AlterStruct>begin("begin", skipStrategy)
                         .where(new SimpleCondition<AlterStruct>() {
                             @Override
                             public boolean filter(AlterStruct s) {
-                                System.out.println("1111"+s.getLevel());
+                                System.out.println("一级告警");
                                 return s.getLevel().equals("一级告警");
                             }
-                        }).times(3).within(Time.seconds(10));
-        PatternStream<AlterStruct> patternStream =
-                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), loginFail);
-        DataStream<String> alarmStream =
-                patternStream.select(new PatternSelectFunction<AlterStruct, String>() {
+                        }).or(new SimpleCondition<AlterStruct>() {
                     @Override
-                    public String select(Map<String, List<AlterStruct>> map) throws Exception {
-                        log.info("1 ===================================================================");
+                    public boolean filter(AlterStruct s) {
+                        System.out.println("二级告警");
+
+                        return s.getLevel().equals("二级告警");
+                    }
+                }).or(new SimpleCondition<AlterStruct>() {
+                    @Override
+                    public boolean filter(AlterStruct s) {
+                        System.out.println("三级告警");
+
+                        return s.getLevel().equals("三级告警");
+                    }
+                }).times(3).within(Time.seconds(10));
+        Pattern<AlterStruct, ?> alarmIncream
+                = Pattern.<AlterStruct>begin("begin", skipStrategy)
+                .where(new SimpleCondition<AlterStruct>() {
+                    @Override
+                    public boolean filter(AlterStruct alterStruct) {
+                        return alterStruct.getLevel().equals("一级告警");
+                    }
+                }).next("middle").where(new SimpleCondition<AlterStruct>() {
+                    @Override
+                    public boolean filter(AlterStruct alterStruct) {
+                        return alterStruct.getLevel().equals("二级告警");
+                    }
+
+                }).next("finally").where(new SimpleCondition<AlterStruct>() {
+                    @Override
+                    public boolean filter(AlterStruct alterStruct) {
+                        return alterStruct.getLevel().equals("三级告警");
+                    }
+
+                });
+        PatternStream<AlterStruct> patternStream =
+                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), alarmGrade);
+        DataStream<AlterStruct> alarmStream =
+                patternStream.select(new PatternSelectFunction<AlterStruct, AlterStruct>() {
+                    @Override
+                    public AlterStruct select(Map<String, List<AlterStruct>> map) throws Exception {
 //                      log.info("p = {}", map);
                         System.out.println("p = {}," + map);
-                        String msg ="lihaolihaoliah";
-                        return msg;
+                        return map.values().iterator().next().get(2);
                     }
                 });
 //
-        alarmStream.print();
+        alarmStream.print("cep-----:");
         //告警数据写入mysql
 //        alert_rule.print();
 //        alert_rule.addSink(new MysqlSink(properties));
@@ -158,37 +190,37 @@ public class StreamToFlinkV3 {
                 //unique_id + ":" + code + ":" + alarm;
                 String targetId = broadcastState.get(alter);
                 String[] split = targetId.split(":");
-                if(split.length!=3){
+                if (split.length != 3) {
                     return;
                 }
-                String unique_id= split[0];
-                String code= split[1];
-                if(!code.equals(value.getZbFourName())){
+                String unique_id = split[0];
+                String code = split[1];
+                if (!code.equals(value.getZbFourName())) {
                     return;
                 }
-                String valu= split[2];
-                if(unique_id.isEmpty()||code.isEmpty()||valu.isEmpty()){
+                String valu = split[2];
+                if (unique_id.isEmpty() || code.isEmpty() || valu.isEmpty()) {
                     return;
                 }
                 String[] split1 = valu.split("\\|");
-                if(split1.length!=3){
+                if (split1.length != 3) {
                     return;
                 }
-                Double num_1=Double.parseDouble(split1[0]);
-                Double num_2=Double.parseDouble(split1[1]);
-                Double num_3=Double.parseDouble(split1[2]);
+                Double num_1 = Double.parseDouble(split1[0]);
+                Double num_2 = Double.parseDouble(split1[1]);
+                Double num_3 = Double.parseDouble(split1[2]);
                 double data_value = Double.parseDouble(value.getValue());
-                if((data_value>num_1||data_value==num_1)&&data_value<num_2){
+                if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(),value.getHost(),value.getZbFourName(),value.getZbFourName(),value.getNameCN(),value.getNameEN(),value.getTime(),system_time,value.getValue(),"一级告警",unique_id,String.valueOf(num_1));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "一级告警", unique_id, String.valueOf(num_1));
                     out.collect(alter_message);
-                }else if((data_value>num_2||data_value==num_2)&&data_value<num_3){
+                } else if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(),value.getHost(),value.getZbFourName(),value.getZbFourName(),value.getNameCN(),value.getNameEN(),value.getTime(),system_time,value.getValue(),"二级告警",unique_id,String.valueOf(num_2));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "二级告警", unique_id, String.valueOf(num_2));
                     out.collect(alter_message);
-                }else if(data_value>num_3||data_value==num_2){
+                } else if (data_value > num_3 || data_value == num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(),value.getHost(),value.getZbFourName(),value.getZbFourName(),value.getNameCN(),value.getNameEN(),value.getTime(),system_time,value.getValue(),"三级告警",unique_id,String.valueOf(num_3));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "三级告警", unique_id, String.valueOf(num_3));
                     out.collect(alter_message);
                 }
             }
@@ -215,11 +247,11 @@ class MyMapFunctionV3 implements MapFunction<SourceEvent, DataStruct> {
         String systemName = codes[0].trim() + "_" + codes[1].trim();
         String zbFourCode = systemName + "_" + codes[2].trim() + "_" + codes[3].trim();
         String zbLastCode = codes[4].trim();
-        String nameCN= sourceEvent.getName_CN();
-        String nameEN= sourceEvent.getName_CN();
+        String nameCN = sourceEvent.getName_CN();
+        String nameEN = sourceEvent.getName_CN();
         String time = sourceEvent.getTime();
         String value = sourceEvent.getValue();
         String host = sourceEvent.getHost();
-        return new DataStruct(systemName,host,zbFourCode,zbLastCode,nameCN,nameEN,time,value);
+        return new DataStruct(systemName, host, zbFourCode, zbLastCode, nameCN, nameEN, time, value);
     }
 }
