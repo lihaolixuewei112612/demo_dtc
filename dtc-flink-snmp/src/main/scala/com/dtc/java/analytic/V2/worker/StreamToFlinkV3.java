@@ -15,7 +15,15 @@ import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.cep.CEP;
+import org.apache.flink.cep.PatternSelectFunction;
+import org.apache.flink.cep.PatternStream;
+import org.apache.flink.cep.nfa.aftermatch.AfterMatchSkipStrategy;
+import org.apache.flink.cep.pattern.Pattern;
+import org.apache.flink.cep.pattern.conditions.IterativeCondition;
+import org.apache.flink.cep.pattern.conditions.SimpleCondition;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -92,21 +100,45 @@ public class StreamToFlinkV3 {
         DataStream<DataStruct> win = splitStream.select("Win");
 
         //linux指标数据处理
-        DataStream<DataStruct> linuxProcess = splitStream
-                .select("Linux").map(new LinuxMapFunction());
-
-
-        SingleOutputStreamOperator<DataStruct> process1 = linuxProcess
+        SingleOutputStreamOperator<DataStruct> process = splitStream
+                .select("Linux")
+                .map(new LinuxMapFunction())
                 .keyBy("Host")
-                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS)).process(new LinuxProcessMapFunction());
-        SingleOutputStreamOperator<AlterStruct> alert_rule = process1.connect(alarmDataStream.broadcast(ALARM_RULES))
+                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
+                .process(new LinuxProcessMapFunction());
+        SingleOutputStreamOperator<AlterStruct> alert_rule = process.connect(alarmDataStream.broadcast(ALARM_RULES))
                 .process(getLinuxFunction());
+
+        AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
+        Pattern<AlterStruct, ?> loginFail =
+                Pattern.<AlterStruct>begin("begin", skipStrategy)
+                        .where(new SimpleCondition<AlterStruct>() {
+                            @Override
+                            public boolean filter(AlterStruct s) {
+                                System.out.println("1111"+s.getLevel());
+                                return s.getLevel().equals("一级告警");
+                            }
+                        }).times(3).within(Time.seconds(10));
+        PatternStream<AlterStruct> patternStream =
+                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), loginFail);
+        DataStream<String> alarmStream =
+                patternStream.select(new PatternSelectFunction<AlterStruct, String>() {
+                    @Override
+                    public String select(Map<String, List<AlterStruct>> map) throws Exception {
+                        log.info("1 ===================================================================");
+//                      log.info("p = {}", map);
+                        System.out.println("p = {}," + map);
+                        String msg ="lihaolihaoliah";
+                        return msg;
+                    }
+                });
+//
+        alarmStream.print();
         //告警数据写入mysql
-        alert_rule.addSink(new MysqlSink(properties));
+//        alert_rule.print();
+//        alert_rule.addSink(new MysqlSink(properties));
         //告警数据实时发送kafka
-
         env.execute("Snmp-Data-Process");
-
     }
 
     private static BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct> getLinuxFunction() {

@@ -29,7 +29,7 @@ public class TestSourceEvent extends RichSourceFunction<SourceEvent> {
             String str = "{\"labels\":{\"__name__\":\"oracledb_resource_current_utilization\",\"instance\":\"10.3.7.231:9161\",\"job\":\"consul\",\"resource_name\":\"gcs_shadows\"},\"name\":\"oracledb_resource_current_utilization\",\"timestamp\":\"2019-08-23T06:40:52Z\",\"value\":\"0\"}";
 //            String str = generateEvent();
             ctx.collect(s);
-            Thread.sleep(10);
+            Thread.sleep(100);
         }
 
     }
