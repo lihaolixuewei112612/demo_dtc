@@ -6,7 +6,6 @@ import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.dtc.java.analytic.V2.common.utils.ExecutionEnvUtil;
 import com.dtc.java.analytic.V2.map.function.LinuxMapFunction;
 import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
-import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
 import com.dtc.java.analytic.V2.source.test.TestSourceEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +14,12 @@ import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
 import org.apache.flink.cep.PatternStream;
 import org.apache.flink.cep.nfa.aftermatch.AfterMatchSkipStrategy;
 import org.apache.flink.cep.pattern.Pattern;
-import org.apache.flink.cep.pattern.conditions.IterativeCondition;
 import org.apache.flink.cep.pattern.conditions.SimpleCondition;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -100,14 +97,14 @@ public class StreamToFlinkV3 {
         DataStream<DataStruct> win = splitStream.select("Win");
 
         //linux指标数据处理
-        SingleOutputStreamOperator<DataStruct> process = splitStream
+        SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
                 .select("Linux")
                 .map(new LinuxMapFunction())
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new LinuxProcessMapFunction());
-        SingleOutputStreamOperator<AlterStruct> alert_rule = process.connect(alarmDataStream.broadcast(ALARM_RULES))
-                .process(getLinuxFunction());
+        SingleOutputStreamOperator<AlterStruct> alert_rule = linuxProcess.connect(alarmDataStream.broadcast(ALARM_RULES))
+                .process(getAlarmFunction());
 
         AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
         Pattern<AlterStruct, ?> alarmGrade =
@@ -173,7 +170,7 @@ public class StreamToFlinkV3 {
         env.execute("Snmp-Data-Process");
     }
 
-    private static BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct> getLinuxFunction() {
+    private static BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct> getAlarmFunction() {
         return new BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct>() {
             MapStateDescriptor<String, String> ALARM_RULES = new MapStateDescriptor<>(
                     "alarm_rules",
