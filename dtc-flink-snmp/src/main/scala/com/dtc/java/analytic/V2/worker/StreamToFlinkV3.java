@@ -5,7 +5,9 @@ import com.dtc.java.analytic.V2.common.model.DataStruct;
 import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.dtc.java.analytic.V2.common.utils.ExecutionEnvUtil;
 import com.dtc.java.analytic.V2.map.function.LinuxMapFunction;
+import com.dtc.java.analytic.V2.map.function.WinMapFunction;
 import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
+import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
 import com.dtc.java.analytic.V2.source.test.TestSourceEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +51,7 @@ public class StreamToFlinkV3 {
             "alarm_rules",
             BasicTypeInfo.STRING_TYPE_INFO,
             BasicTypeInfo.STRING_TYPE_INFO);
+    private static DataStreamSource<Map<String, String>> alarmDataStream = null;
 
     public static void main(String[] args) throws Exception {
 
@@ -62,7 +65,7 @@ public class StreamToFlinkV3 {
         }
         int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
-        DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);
+        alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);
         DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
 
         /**
@@ -94,7 +97,13 @@ public class StreamToFlinkV3 {
             return output;
         });
         //windows指标数据处理
-        DataStream<DataStruct> win = splitStream.select("Win");
+        SingleOutputStreamOperator<DataStruct> winProcess = splitStream
+                .select("Win")
+                .map(new WinMapFunction())
+                .keyBy("Host")
+                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
+                .process(new WinProcessMapFunction());
+        DataStream<AlterStruct> alarmStreamWin = getAlarm(winProcess);
 
         //linux指标数据处理
         SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
@@ -103,7 +112,17 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new LinuxProcessMapFunction());
-        SingleOutputStreamOperator<AlterStruct> alert_rule = linuxProcess.connect(alarmDataStream.broadcast(ALARM_RULES))
+        DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
+        alarmStreamLinux.print("cep-----:");
+        //告警数据写入mysql
+//        alert_rule.print();
+//        alert_rule.addSink(new MysqlSink(properties));
+        //告警数据实时发送kafka
+        env.execute("Snmp-Data-Process");
+    }
+
+    private static DataStream<AlterStruct> getAlarm(SingleOutputStreamOperator<DataStruct> event) {
+        SingleOutputStreamOperator<AlterStruct> alert_rule = event.connect(alarmDataStream.broadcast(ALARM_RULES))
                 .process(getAlarmFunction());
 
         AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
@@ -161,13 +180,7 @@ public class StreamToFlinkV3 {
                         return map.values().iterator().next().get(2);
                     }
                 });
-//
-        alarmStream.print("cep-----:");
-        //告警数据写入mysql
-//        alert_rule.print();
-//        alert_rule.addSink(new MysqlSink(properties));
-        //告警数据实时发送kafka
-        env.execute("Snmp-Data-Process");
+        return alarmStream;
     }
 
     private static BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct> getAlarmFunction() {
