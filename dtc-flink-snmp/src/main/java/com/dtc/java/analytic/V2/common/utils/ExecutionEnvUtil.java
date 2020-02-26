@@ -12,7 +12,11 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
+/**
+ * Created on 2020-02-15
+ *
+ * @author :hao.li
+ */
 public class ExecutionEnvUtil {
     private static final String EXACTLY_ONCE_MODE = "exactly_once";
     private static final String EVENT_TIME = "EventTime";

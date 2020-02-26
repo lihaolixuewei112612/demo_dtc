@@ -8,17 +8,19 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
- * Metric Schema ，支持序列化和反序列化
+ * Created on 2020-02-15
  *
+ * @author :hao.li
  */
 public class SourceEventSchema implements DeserializationSchema<SourceEvent>, SerializationSchema<SourceEvent> {
 
     private static final Gson gson = new Gson();
 
     @Override
-    public SourceEvent deserialize(byte[] bytes) throws IOException {
+    public SourceEvent deserialize(byte[] bytes) {
         return gson.fromJson(new String(bytes), SourceEvent.class);
     }
 
@@ -28,8 +30,8 @@ public class SourceEventSchema implements DeserializationSchema<SourceEvent>, Se
     }
 
     @Override
-    public byte[] serialize(SourceEvent metricEvent) {
-        return gson.toJson(metricEvent).getBytes(Charset.forName("UTF-8"));
+    public byte[] serialize(SourceEvent sourceEvent) {
+        return gson.toJson(sourceEvent).getBytes(StandardCharsets.UTF_8);
     }
 
     @Override

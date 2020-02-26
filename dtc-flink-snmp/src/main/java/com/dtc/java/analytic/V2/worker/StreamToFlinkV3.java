@@ -12,7 +12,6 @@ import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
 import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
-import com.dtc.java.analytic.V2.source.test.TestSourceEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.BroadcastState;
@@ -79,7 +78,7 @@ public class StreamToFlinkV3 {
          * */
 //        DataStreamSource<String> dataStreamSource = env.socketTextStream("172.20.10.2", 8080, '\n');
 
-        SingleOutputStreamOperator<DataStruct> mapStream = streamSource.map(new MyMapFunctionV3());
+        SingleOutputStreamOperator<DataStruct> mapStream = streamSource.map(new MyMapFunctionV4());
 //        SingleOutputStreamOperator<DataStruct> timeSingleOutputStream
 //                = mapStream.assignTimestampsAndWatermarks(new DtcPeriodicAssigner());
 
@@ -276,8 +275,8 @@ class MyMapFunctionV3 implements MapFunction<SourceEvent, DataStruct> {
         String systemName = codes[0].trim() + "_" + codes[1].trim();
         String zbFourCode = systemName + "_" + codes[2].trim() + "_" + codes[3].trim();
         String zbLastCode = codes[4].trim();
-        String nameCN = sourceEvent.getName_CN();
-        String nameEN = sourceEvent.getName_CN();
+        String nameCN = sourceEvent.getNameCN();
+        String nameEN = sourceEvent.getNameEN();
         String time = sourceEvent.getTime();
         String value = sourceEvent.getValue();
         String host = sourceEvent.getHost();

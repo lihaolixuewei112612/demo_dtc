@@ -26,11 +26,15 @@ import java.util.Map;
 @Slf4j
 public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, DataStruct, Tuple, TimeWindow> {
 
-
+    //磁盘描述
     private Map<String, String> diskDescribe = new HashMap();
+    //磁盘每个块的大小
     private Map<String, String> diskBlockSize = new HashMap();
+    //磁盘块的个数
     private Map<String, String> diskBlockNum = new HashMap();
+    //磁盘容量
     private Map<String, String> diskCaption = new HashMap();
+    //cpu个数
     private Map<String, String> cpuNum = new HashMap<>();
     private boolean flag = false;
 

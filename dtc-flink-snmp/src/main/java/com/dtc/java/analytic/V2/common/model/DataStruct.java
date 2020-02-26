@@ -5,18 +5,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Created on 2020-02-14
+ * Created on 2020-02-15
  *
  * @author :hao.li
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SourceEvent {
+public class DataStruct {
+    private String System_name;
+    private String Host;
+    private String zbFourName;
+    private String zbLastCode;
+    private String nameCN;
+    private String nameEN;
     private String time;
-    private String code;
-    private String host;
-    private String name_CN;
-    private String name_EN;
     private String value;
 }
