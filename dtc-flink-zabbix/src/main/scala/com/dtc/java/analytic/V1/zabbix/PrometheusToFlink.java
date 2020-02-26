@@ -6,7 +6,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.dtc.java.analytic.V1.common.utils.CountUtils;
 import com.dtc.java.analytic.V1.common.utils.ExecutionEnvUtil;
 import com.dtc.java.analytic.V1.common.utils.KafkaConfigUtil;
-import com.dtc.java.analytic.common.utils.*;
 import com.dtc.java.analytic.V1.common.watermarks.DTCPeriodicWatermak;
 import com.dtc.java.analytic.V1.sink.opentsdb.PSinkToOpentsdb;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -33,10 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.dtc.java.analytic.V1.hbase.hbase.constant.HBaseConstant.*;
-import static com.dtc.java.analytic.V1.hbase.hbase.constant.HBaseConstant.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD;
 
 /**
  * Created on 2019-08-15

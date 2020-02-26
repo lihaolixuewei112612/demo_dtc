@@ -20,7 +20,7 @@ public class LinuxMapFunction implements MapFunction<DataStruct, DataStruct> {
             String result = event.getZbFourName() + "_" + lastCode;
             return new DataStruct(event.getSystem_name() + "|linux_0", event.getHost(), result, nameCode, event.getNameCN(), event.getNameEN(), event.getTime(), event.getValue());
         } else {
-            return new DataStruct(event.getSystem_name() + "|linux_1", event.getHost(), event.getZbFourName() + "_" + event.getZbLastCode(), event.getZbLastCode(), event.getNameCN(), event.getNameEN(), event.getTime(), event.getValue());
+            return new DataStruct(event.getSystem_name() + "|linux_1", event.getHost(), event.getZbFourName() + "_" + event.getZbLastCode(), "", event.getNameCN(), event.getNameEN(), event.getTime(), event.getValue());
         }
     }
 }

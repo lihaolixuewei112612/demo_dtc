@@ -1,9 +1,11 @@
 package com.dtc.java.analytic.V2.common.utils;
 
 
-import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.analytic.V1.snmp.SourceEvent;
-import com.dtc.java.analytic.V1.snmp.SourceEventSchema;
+
+
+import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
+import com.dtc.java.analytic.V2.common.model.SourceEvent;
+import com.dtc.java.analytic.V2.common.schemas.SourceEventSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -78,7 +80,7 @@ public class KafkaConfigUtil {
         ParameterTool parameterTool = (ParameterTool) env.getConfig().getGlobalJobParameters();
         Properties props = buildKafkaProps(parameterTool);
         FlinkKafkaConsumer<SourceEvent> consumer = new FlinkKafkaConsumer<>(topic, new SourceEventSchema(), props);
-//        consumer.setStartFromLatest();
+        consumer.setStartFromLatest();
         //重置offset到time时刻
         if (time != 0L) {
             Map<KafkaTopicPartition, Long> partitionOffset = buildOffsetByTime(props, parameterTool, time);

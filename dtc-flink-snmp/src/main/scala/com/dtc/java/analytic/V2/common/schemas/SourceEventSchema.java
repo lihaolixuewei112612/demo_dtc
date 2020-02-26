@@ -1,5 +1,6 @@
-package com.dtc.java.analytic.V1.snmp;
+package com.dtc.java.analytic.V2.common.schemas;
 
+import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.google.gson.Gson;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;

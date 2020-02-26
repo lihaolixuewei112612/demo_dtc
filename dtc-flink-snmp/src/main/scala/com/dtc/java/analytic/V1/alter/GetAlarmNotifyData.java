@@ -71,7 +71,8 @@ public class GetAlarmNotifyData extends RichSourceFunction<Map<String, String>> 
 
             ctx.collect(map);
             map.clear();
-            Thread.sleep(2000 * 60);
+//            Thread.sleep(2000 * 60);
+            Thread.sleep(20 * 60);
         }
 
     }

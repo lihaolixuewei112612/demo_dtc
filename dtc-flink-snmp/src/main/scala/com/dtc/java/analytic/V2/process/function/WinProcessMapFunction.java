@@ -1,9 +1,11 @@
 package com.dtc.java.analytic.V2.process.function;
 
+import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
 import com.dtc.java.analytic.V2.common.model.DataStruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple6;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
@@ -24,6 +26,7 @@ import java.util.Map;
 @Slf4j
 public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, DataStruct, Tuple, TimeWindow> {
 
+
     private Map<String, String> diskDescribe = new HashMap();
     private Map<String, String> diskBlockSize = new HashMap();
     private Map<String, String> diskBlockNum = new HashMap();
@@ -33,6 +36,15 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
 
     @Override
     public void process(Tuple tuple, Context context, Iterable<DataStruct> iterable, Collector<DataStruct> collector) throws Exception {
+        ParameterTool parameters = (ParameterTool)
+                getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
+
+        String userName = parameters.get(PropertiesConstants.MYSQL_USERNAME);
+        String passWord = parameters.get(PropertiesConstants.MYSQL_PASSWORD);
+        String host = parameters.get(PropertiesConstants.MYSQL_HOST);
+        String port = parameters.get(PropertiesConstants.MYSQL_PORT);
+        String database = parameters.get(PropertiesConstants.MYSQL_DATABASE);
+        String mysql_win_table = parameters.get(PropertiesConstants.MYSQL_WINDOWS_TABLE);
         double sum = 0;
         for (DataStruct wc : iterable) {
             String keyValue = wc.getHost() + "_" + wc.getZbLastCode();
@@ -51,7 +63,7 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
                     sum += Double.parseDouble(wc.getValue());
                 }
                 double result = sum / cpuNum.size();
-                collector.collect(new DataStruct(wc.getSystem_name(),wc.getHost(),wc.getZbFourName(),wc.getZbLastCode(),wc.getNameCN(),wc.getNameEN(),wc.getTime(),String.valueOf(result)));
+                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
             }
             /**
              * 磁盘描述
@@ -59,20 +71,18 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
             if ("101_100_103_103_103".equals(wc.getZbFourName())) {
                 if ((!diskDescribe.containsKey(keyValue)) || (diskDescribe.containsKey(keyValue) && (!diskDescribe.get(keyValue).equals(wc.getValue())))) {
                     diskDescribe.put(keyValue, wc.getValue());
-                    String Url = "jdbc:mysql://localhost/test01";//参数参考MySql连接数据库常用参数及代码示例
-                    String name = "root";//数据库用户名
-                    String psd = "psd";//数据库密码
-                    String jdbcName = "com.mysql.jdbc.Driver";//连接MySql数据库
-                    String sql = "insert into test values(?,?,?)";//数据库操作语句（插入）
+                    String Url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
+                    String jdbcName = "com.mysql.jdbc.Driver";
+                    String sql = "insert into" + mysql_win_table + "values(?,?,?)";
                     Connection con = null;
                     try {
                         Class.forName(jdbcName);//向DriverManager注册自己
-                        con = DriverManager.getConnection(Url, name, psd);//与数据库建立连接
+                        con = DriverManager.getConnection(Url, userName, passWord);//与数据库建立连接
                         PreparedStatement pst = con.prepareStatement(sql);//用来执行SQL语句查询，对sql语句进行预编译处理
                         pst.setString(1, wc.getHost());
                         pst.setString(2, wc.getZbLastCode());
                         pst.setString(3, wc.getValue());
-                        pst.executeUpdate();//解释在下
+                        pst.executeUpdate();
                     } catch (ClassNotFoundException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -128,7 +138,7 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
                 Double diskUsedCapacity = Double.parseDouble(diskCaption.get(keyValue));
                 //磁盘使用率
                 Double result = resu / diskUsedCapacity;
-                collector.collect(new DataStruct(wc.getSystem_name(),wc.getHost(),wc.getZbFourName()+"."+wc.getZbLastCode(),wc.getZbLastCode(),wc.getNameCN(),wc.getNameEN(),wc.getTime(),String.valueOf(result)));
+                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName() + "." + wc.getZbLastCode(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
                 continue;
             }
         }

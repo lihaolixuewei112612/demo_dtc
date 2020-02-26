@@ -56,46 +56,36 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
 
     @Override
     public void invoke(AlterStruct value, Context context) throws Exception {
+        System.out.println("write data to mysql is begin...");
+
         try {
 
-            /**
-             *
-             * private String System_name;
-             *     private String Host;
-             *     private String zbFourName;
-             *     private String zbLastCode;
-             *     private String nameCN;
-             *     private String nameEN;
-             *     private String event_time;
-             *     private String system_time;
-             *     private String value;
-             *     private String level;
-             *     private String unique_id;
-             *     private String yuzhi;
-             */
-            String system_code = value.getSystem_name();
-            String host = value.getHost();
-            String code = value.getZbLastCode();//获取JdbcReader发送过来的结果
+            String system_id = value.getSystem_name();
+            String host_ip = value.getHost();
+            String itmes_code = value.getZbFourName();
+            String last_code =value.getZbLastCode();
             String nameCN=value.getNameCN();
             String nameEN = value.getNameEN();
             String event_time =value.getEvent_time();
             String system_time=value.getSystem_time();
-            String result = value.getValue();
-            String level =value.getLevel();
+            String real_value = value.getValue();
+            String alarm_threshold = value.getYuzhi();
             String unique_id = value.getUnique_id();
-            String yuzhi =value.getYuzhi();
-            preparedStatement.setString(1,system_code);
-            preparedStatement.setString(2,host);
-            preparedStatement.setString(3,code);
-            preparedStatement.setString(4,nameCN);
-            preparedStatement.setString(5,nameEN);
-            preparedStatement.setString(6,event_time);
-            preparedStatement.setString(7,system_time);
-            preparedStatement.setString(8,result);
-            preparedStatement.setString(9,level);
-            preparedStatement.setString(10,unique_id);
-            preparedStatement.setString(11,yuzhi);
+            String alarm_garde =value.getLevel();
+            preparedStatement.setString(1,system_id);
+            preparedStatement.setString(2,host_ip);
+            preparedStatement.setString(3,itmes_code);
+            preparedStatement.setString(4,last_code);
+            preparedStatement.setString(5,nameCN);
+            preparedStatement.setString(6,nameEN);
+            preparedStatement.setString(7,event_time);
+            preparedStatement.setString(8,system_time);
+            preparedStatement.setString(9,real_value);
+            preparedStatement.setString(10,alarm_threshold);
+            preparedStatement.setString(11,unique_id);
+            preparedStatement.setString(12,alarm_garde);
             preparedStatement.executeUpdate();
+            System.out.println("write data to mysql is success!!!");
         }catch (Exception e){
             e.printStackTrace();
         }

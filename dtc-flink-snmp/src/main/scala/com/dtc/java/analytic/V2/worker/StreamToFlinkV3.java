@@ -4,10 +4,13 @@ import com.dtc.java.analytic.V2.common.model.AlterStruct;
 import com.dtc.java.analytic.V2.common.model.DataStruct;
 import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.dtc.java.analytic.V2.common.utils.ExecutionEnvUtil;
+import com.dtc.java.analytic.V2.common.utils.KafkaConfigUtil;
 import com.dtc.java.analytic.V2.map.function.LinuxMapFunction;
 import com.dtc.java.analytic.V2.map.function.WinMapFunction;
 import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
 import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
+import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
+import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
 import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
 import com.dtc.java.analytic.V2.source.test.TestSourceEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +59,7 @@ public class StreamToFlinkV3 {
     public static void main(String[] args) throws Exception {
 
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
+        String opentsdb_url = parameterTool.get("dtc.opentsdb.url", "http://10.10.58.16:4399");
         Map<String, String> stringStringMap = parameterTool.toMap();
         Properties properties = new Properties();
         for (String key : stringStringMap.keySet()) {
@@ -65,8 +69,10 @@ public class StreamToFlinkV3 {
         }
         int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
+        env.getConfig().setGlobalJobParameters(parameterTool);
         alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);
-        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
+//        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
+        DataStreamSource<SourceEvent> streamSource = KafkaConfigUtil.buildSource(env);
 
         /**
          * {"time":"1581691002687","code":"101_101_107_105_105","host":"10.3.7.234","nameCN":"磁盘剩余大小","value":"217802544","nameEN":"disk_free"}
@@ -103,7 +109,13 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new WinProcessMapFunction());
+
+        //windows数据全量写opentsdb
+        winProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
+
+        //windows数据进行告警规则判断并将告警数据写入mysql
         DataStream<AlterStruct> alarmStreamWin = getAlarm(winProcess);
+        alarmStreamWin.addSink(new MysqlSink(properties));
 
         //linux指标数据处理
         SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
@@ -112,11 +124,16 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new LinuxProcessMapFunction());
+        linuxProcess.print("test:");
+
+        //Linux数据全量写opentsdb
+        linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
+
+        //Linux数据进行告警规则判断并将告警数据写入mysql
         DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
-        alarmStreamLinux.print("cep-----:");
-        //告警数据写入mysql
-//        alert_rule.print();
-//        alert_rule.addSink(new MysqlSink(properties));
+        alarmStreamLinux.print("告警数据：");
+        alarmStreamLinux.addSink(new MysqlSink(properties));
+
         //告警数据实时发送kafka
         env.execute("Snmp-Data-Process");
     }
@@ -124,6 +141,7 @@ public class StreamToFlinkV3 {
     private static DataStream<AlterStruct> getAlarm(SingleOutputStreamOperator<DataStruct> event) {
         SingleOutputStreamOperator<AlterStruct> alert_rule = event.connect(alarmDataStream.broadcast(ALARM_RULES))
                 .process(getAlarmFunction());
+        alert_rule.print("测试数据：");
 
         AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
         Pattern<AlterStruct, ?> alarmGrade =
@@ -175,8 +193,6 @@ public class StreamToFlinkV3 {
                 patternStream.select(new PatternSelectFunction<AlterStruct, AlterStruct>() {
                     @Override
                     public AlterStruct select(Map<String, List<AlterStruct>> map) throws Exception {
-//                      log.info("p = {}", map);
-                        System.out.println("p = {}," + map);
                         return map.values().iterator().next().get(2);
                     }
                 });
@@ -193,26 +209,29 @@ public class StreamToFlinkV3 {
             @Override
             public void processElement(DataStruct value, ReadOnlyContext ctx, Collector<AlterStruct> out) throws Exception {
                 ReadOnlyBroadcastState<String, String> broadcastState = ctx.getBroadcastState(ALARM_RULES);
-                String alter = value.getHost();
-                if (!broadcastState.contains(alter)) {
+                String host_ip = value.getHost();
+                String code = value.getZbFourName().replace("_",".");
+                String weiyi = host_ip + "." + code;
+                System.out.println(host_ip);
+                if (!broadcastState.contains(weiyi)) {
                     return;
                 }
                 //unique_id + ":" + code + ":" + alarm;
-                String targetId = broadcastState.get(alter);
+                String targetId = broadcastState.get(weiyi);
                 String[] split = targetId.split(":");
                 if (split.length != 3) {
                     return;
                 }
                 String unique_id = split[0];
-                String code = split[1];
-                if (!code.equals(value.getZbFourName())) {
+                String r_code = split[1];
+                if (!r_code.equals(value.getZbFourName())) {
                     return;
                 }
-                String valu = split[2];
-                if (unique_id.isEmpty() || code.isEmpty() || valu.isEmpty()) {
+                String r_value = split[2];
+                if (unique_id.isEmpty() || code.isEmpty() || r_value.isEmpty()) {
                     return;
                 }
-                String[] split1 = valu.split("\\|");
+                String[] split1 = r_value.split("\\|");
                 if (split1.length != 3) {
                     return;
                 }
@@ -222,15 +241,15 @@ public class StreamToFlinkV3 {
                 double data_value = Double.parseDouble(value.getValue());
                 if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "一级告警", unique_id, String.valueOf(num_1));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "一级告警", unique_id, String.valueOf(num_1));
                     out.collect(alter_message);
                 } else if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "二级告警", unique_id, String.valueOf(num_2));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "二级告警", unique_id, String.valueOf(num_2));
                     out.collect(alter_message);
                 } else if (data_value > num_3 || data_value == num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbFourName(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "三级告警", unique_id, String.valueOf(num_3));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "三级告警", unique_id, String.valueOf(num_3));
                     out.collect(alter_message);
                 }
             }

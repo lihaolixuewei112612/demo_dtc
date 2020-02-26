@@ -38,13 +38,14 @@ public class GetAlarmNotifyData extends RichSourceFunction<Map<String, String>> 
         String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
         String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
         String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
+        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
 
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select * from dtc_test";
+            String sql = "select * from " + alarm_rule_table;
             ps = connection.prepareStatement(sql);
         }
     }
@@ -56,23 +57,20 @@ public class GetAlarmNotifyData extends RichSourceFunction<Map<String, String>> 
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-//                if (1 == resultSet.getInt("id")) {
                 if ("true".equals(resultSet.getString("used"))) {
                     String unique_id = resultSet.getString("unique_id");
-                    String ip = resultSet.getString("ip");
-                    String code = resultSet.getString("code");
-                    String alarm = resultSet.getString("alarm");
-                    String key = unique_id + ":" + ip;
+                    String ip = resultSet.getString("host_ip");
+                    String code = resultSet.getString("items_code");
+                    String alarm = resultSet.getString("alarm_threshold_garde");
+                    String key = ip + "." + code.replace("_",".");
                     String result = unique_id + ":" + code + ":" + alarm;
-                    map.put(ip, result);
+                    map.put(key, result);
                 }
-
             }
             log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
-
             ctx.collect(map);
             map.clear();
-            Thread.sleep(2000 * 60);
+            Thread.sleep(1000 * 60);
         }
 
     }
