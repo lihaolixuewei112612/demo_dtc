@@ -78,7 +78,7 @@ public class StreamToFlinkV3 {
          * */
 //        DataStreamSource<String> dataStreamSource = env.socketTextStream("172.20.10.2", 8080, '\n');
 
-        SingleOutputStreamOperator<DataStruct> mapStream = streamSource.map(new MyMapFunctionV4());
+        SingleOutputStreamOperator<DataStruct> mapStream = streamSource.map(new MyMapFunctionV3());
 //        SingleOutputStreamOperator<DataStruct> timeSingleOutputStream
 //                = mapStream.assignTimestampsAndWatermarks(new DtcPeriodicAssigner());
 
@@ -108,12 +108,14 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new WinProcessMapFunction());
+        winProcess.print("test");
 
         //windows数据全量写opentsdb
         winProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
 
         //windows数据进行告警规则判断并将告警数据写入mysql
         DataStream<AlterStruct> alarmStreamWin = getAlarm(winProcess);
+        alarmStreamWin.print("alarm:----");
         alarmStreamWin.addSink(new MysqlSink(properties));
 
         //linux指标数据处理
@@ -123,14 +125,13 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new LinuxProcessMapFunction());
-        linuxProcess.print("test:");
 
         //Linux数据全量写opentsdb
         linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
 
         //Linux数据进行告警规则判断并将告警数据写入mysql
         DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
-        alarmStreamLinux.print("告警数据：");
+
         alarmStreamLinux.addSink(new MysqlSink(properties));
 
         //告警数据实时发送kafka

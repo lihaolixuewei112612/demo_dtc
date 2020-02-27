@@ -59,16 +59,8 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                  *  主机系统参数：系统启动时间，这一块不会执行。等待处理
                  */
                 if ("101_101_101_106_106".equals(in.getZbFourName())) {
-                    if (in.getTime().contains(",")) {
-                        String day = in.getTime().split(",")[0];
-                        String result = day.split("\\s+")[0];
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), result));
-                        continue;
-                    } else {
-                        String hour = in.getTime().split(":")[0];
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), hour));
-                        continue;
-                    }
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
+                    continue;
                 }
 
                 /**
@@ -428,5 +420,6 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
         collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_104_110_110", "000", in.getNameCN(), in.getNameEN(), in.getTime(), memoryFreeRate));
 
     }
+
 }
 

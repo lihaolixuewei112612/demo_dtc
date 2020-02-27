@@ -55,7 +55,7 @@ public class PropertiesConstants {
 
     public static final String JDBC_URL = "mysql.url";
 
-    public static final String SQL = "mysql.sql";
+
 
     public static final String DTC_USERNAME = "dtc.mysql.user";
 
@@ -131,5 +131,6 @@ public class PropertiesConstants {
     public static final String MYSQL_PASSWORD = "mysql.password";
     public static final String MYSQL_PORT = "mysql.port";
     public static final String MYSQL_USERNAME = "mysql.username";
+    public static final String SQL = "mysql.sql";
 
 }

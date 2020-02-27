@@ -53,11 +53,11 @@ public class KafkaConfigUtil {
         props.put(PropertiesConstants.KEY_DESERIALIZER, "org.apache.kafka.common.serialization.StringDeserializer");
         props.put(PropertiesConstants.VALUE_DESERIALIZER, "org.apache.kafka.common.serialization.StringDeserializer");
         props.put(PropertiesConstants.AUTO_OFFSET_RESET, "latest");
-        props.put(PropertiesConstants.DRIVER_NAME,parameterTool.get(PropertiesConstants.DTC_DRIVER_NAME,PropertiesConstants.DEFAULT_DRIVER_NAME));
-        props.put(PropertiesConstants.JDBC_URL,parameterTool.get(PropertiesConstants.DTC_JDBC_URL,PropertiesConstants.DEFAULT_JDBC_URL));
-        props.put(PropertiesConstants.USERNAME,parameterTool.get(PropertiesConstants.DTC_USERNAME,PropertiesConstants.DEFAULT_USERNAME));
-        props.put(PropertiesConstants.PASSWORD,parameterTool.get(PropertiesConstants.DTC_PASSWORD,PropertiesConstants.DEFAULT_PASSWORD));
-        props.put(PropertiesConstants.SQL,parameterTool.get(PropertiesConstants.DTC_SQL,PropertiesConstants.DEFAULT_DTC_SQL));
+//        props.put(PropertiesConstants.DRIVER_NAME,parameterTool.get(PropertiesConstants.DTC_DRIVER_NAME,PropertiesConstants.DEFAULT_DRIVER_NAME));
+//        props.put(PropertiesConstants.JDBC_URL,parameterTool.get(PropertiesConstants.DTC_JDBC_URL,PropertiesConstants.DEFAULT_JDBC_URL));
+//        props.put(PropertiesConstants.USERNAME,parameterTool.get(PropertiesConstants.DTC_USERNAME,PropertiesConstants.DEFAULT_USERNAME));
+//        props.put(PropertiesConstants.PASSWORD,parameterTool.get(PropertiesConstants.DTC_PASSWORD,PropertiesConstants.DEFAULT_PASSWORD));
+//        props.put(PropertiesConstants.SQL,parameterTool.get(PropertiesConstants.DTC_SQL,PropertiesConstants.DEFAULT_DTC_SQL));
         return props;
     }
 

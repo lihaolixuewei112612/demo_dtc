@@ -130,6 +130,6 @@ public class PropertiesConstants {
     public static final String MYSQL_PORT = "mysql.port";
     public static final String MYSQL_USERNAME = "mysql.username";
     public static final String MYSQL_ALAEM_TABLE = "mysql.alarm_rule_table";
-    public static final String MYSQL_WINDOWS_TABLE = "mysql.windows_table";
+    public static final String MYSQL_WINDOWS_TABLE = "mysql.windows_disk_sql";
 
 }
