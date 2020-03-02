@@ -54,27 +54,31 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
         double rec_total = 0;
         double rec_total_count = 0;
         double sent_total = 0;
-        double sent_total_count =0;
+        double sent_total_count = 0;
         double discard_package_in_num = 0;
-        double discard_in_count=0;
+        double discard_in_count = 0;
         double discard_package_out_num = 0;
-        double discard_out_count=0;
+        double discard_out_count = 0;
         double error_in_num = 0;
-        double error_in_count=0;
+        double error_in_count = 0;
         double error_out_num = 0;
-        double error_out_count=0;
+        double error_out_count = 0;
+        double cpuCount = 0;
+        int count = 0;
+        Map<String, String> usedDiskMap = new HashMap<>();
 
         for (DataStruct wc : iterable) {
             String keyValue = wc.getHost() + "_" + wc.getZbLastCode();
 
             /**
-            *
+             *
              * 系统启动时间
              *
-            * */
-            if("101_100_105_102_102".equals(wc.getZbFourName())){
+             * */
+            if ("101_100_105_102_102".equals(wc.getZbFourName())) {
                 //TODO:写hbase
                 collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), wc.getValue()));
+                continue;
             }
 
 
@@ -83,20 +87,28 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
              * */
             if ("101_100_101_101_101".equals(wc.getZbFourName())) {
                 if (!cpuNum.containsKey(keyValue)) {
-                    cpuNum.put(wc.getZbLastCode(), "1");
+                    cpuNum.put(keyValue, "1");
                     continue;
                 } else {
                     flag = true;
-                    continue;
                 }
             }
             if (flag) {
-                if ("101_100_101_101_101".equals(keyValue)) {
-                    cpu_sum += Double.parseDouble(wc.getValue());
+                if ("101_100_101_101_101".equals(wc.getZbFourName())) {
+                    if (!(cpuCount == cpuNum.size())) {
+                        cpuCount += 1;
+                        cpu_sum += Double.parseDouble(wc.getValue());
+                        continue;
+                    } else {
+                        if (count < 1) {
+                            double result = cpu_sum / cpuNum.size();
+                            collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
+                            count += 1;
+                            continue;
+                        }
+                    }
                 }
-                double result = cpu_sum / cpuNum.size();
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
-                continue;
+
             }
             /**
              * 磁盘描述：存储的目的是为了保存指标与磁盘的对应关系
@@ -164,20 +176,31 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
                 }
             }
             /**
-             * 磁盘使用量
-             * 磁盘使用率
+             * 每个磁盘使用率
              * 虚拟/物理内存使用率
              * */
-            if ("101_100_103_104_106".equals(wc.getZbFourName()) && diskCaption.containsKey(keyValue)) {
+            if ("101_100_103_106_106".equals(wc.getZbFourName()) && diskCaption.containsKey(keyValue)) {
                 Double used_disk = Double.parseDouble(wc.getValue()) * Double.parseDouble(diskBlockSize.get(keyValue));
                 Double diskUsedCapacity = Double.parseDouble(diskCaption.get(keyValue));
                 //磁盘使用量
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(used_disk)));
-                //磁盘总量
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(diskUsedCapacity)));
+//                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(used_disk)));
+//                //磁盘总量
+//                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(diskUsedCapacity)));
                 //磁盘使用率
                 Double rato_used_disk = used_disk / diskUsedCapacity;
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_107_107", wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                usedDiskMap.put(keyValue, wc.getValue());
+                if (usedDiskMap.size() == diskBlockSize.size()) {
+                    Double re = 0.0;
+                    Double res = 0.0;
+                    for (String s : usedDiskMap.values()) {
+                        re += Double.parseDouble(s);
+                    }
+                    for (String s : diskCaption.values()) {
+                        res += Double.parseDouble(s);
+                    }
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_108_108", "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                }
                 continue;
             }
             /**
@@ -186,44 +209,44 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
              * */
             if ("101_100_104_101_101".equals(wc.getZbFourName())) {
                 net_num = Double.valueOf(wc.getValue());
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), wc.getValue()));
+                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), wc.getValue()));
                 continue;
             }
             if ("101_100_104_102_102".equals(wc.getZbFourName())) {
                 rec_total += Double.valueOf(wc.getValue());
                 rec_total_count += rec_total_count;
                 if (rec_total_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rec_total)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rec_total)));
                 }
-            }else if ("101_100_104_103_103".equals(wc.getZbFourName())) {
+            } else if ("101_100_104_103_103".equals(wc.getZbFourName())) {
                 sent_total += Double.valueOf(wc.getValue());
                 sent_total_count += sent_total_count;
                 if (sent_total_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(sent_total)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(sent_total)));
                 }
-            }else if ("101_100_104_104_104".equals(wc.getZbFourName())) {
+            } else if ("101_100_104_104_104".equals(wc.getZbFourName())) {
                 discard_package_in_num += Double.valueOf(wc.getValue());
                 discard_in_count += discard_in_count;
                 if (discard_in_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(discard_package_in_num)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(discard_package_in_num)));
                 }
-            }else if ("101_100_104_105_105".equals(wc.getZbFourName())) {
+            } else if ("101_100_104_105_105".equals(wc.getZbFourName())) {
                 error_in_num += Double.valueOf(wc.getValue());
                 error_in_count += error_in_count;
                 if (error_in_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(error_in_num)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(error_in_num)));
                 }
-            }else if ("101_100_104_106_106".equals(wc.getZbFourName())) {
+            } else if ("101_100_104_106_106".equals(wc.getZbFourName())) {
                 discard_package_out_num += Double.valueOf(wc.getValue());
                 discard_out_count += discard_out_count;
                 if (discard_out_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(discard_package_out_num)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(discard_package_out_num)));
                 }
-            }else if ("101_100_104_107_107".equals(wc.getZbFourName())) {
+            } else if ("101_100_104_107_107".equals(wc.getZbFourName())) {
                 error_out_count += Double.valueOf(wc.getValue());
                 error_out_num += error_out_num;
                 if (error_out_num == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(error_out_count)));
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(error_out_count)));
                 }
             }
         }

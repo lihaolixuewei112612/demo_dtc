@@ -65,6 +65,21 @@ public class PSinkToOpentsdb extends RichSinkFunction<DataStruct> {
                         .setDataPoint(time, result)
                         .addTag("type", "dpi")
                         .addTag("host", host);
+            }else if(value.getSystem_name().contains("win")){
+                if(id.isEmpty()){
+                    String metircs = metric + "-" + host;
+                    builder.addMetric(metircs)
+                            .setDataPoint(time, result)
+                            .addTag("type", "dpi")
+                            .addTag("host", host);
+                }else {
+                    String metircs = metric + "-" + host + "-" + id;
+                    builder.addMetric(metircs)
+                            .setDataPoint(time, result)
+                            .addTag("type", "dpi")
+                            .addTag("lastcode", id)
+                            .addTag("host", host);
+                }
             } else {
                 builder.addMetric(metric + "-" + host)
                         .setDataPoint(time, result)

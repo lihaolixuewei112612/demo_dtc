@@ -23,7 +23,8 @@ public class WinMapFunction implements MapFunction<DataStruct, DataStruct> {
             return new DataStruct(event.getSystem_name() + "|win_0",event.getHost(),result,nameCode,event.getNameCN(),event.getNameEN(),event.getTime(),event.getValue());
 
         } else {
-            return new DataStruct(event.getSystem_name() + "|win_1",event.getHost(),event.getZbFourName(),event.getZbLastCode(),event.getNameCN(),event.getNameEN(),event.getTime(),event.getValue());
+            String result = event.getZbFourName() + "_" + zbLastCode;
+            return new DataStruct(event.getSystem_name() + "|win_1",event.getHost(),result,"",event.getNameCN(),event.getNameEN(),event.getTime(),event.getValue());
 
         }
     }

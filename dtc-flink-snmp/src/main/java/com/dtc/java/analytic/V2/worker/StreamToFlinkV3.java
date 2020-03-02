@@ -186,9 +186,11 @@ public class StreamToFlinkV3 {
                         return alterStruct.getLevel().equals("三级告警");
                     }
 
-                });
+                }).times(2).within(Time.seconds(10));
         PatternStream<AlterStruct> patternStream =
                 CEP.pattern(alert_rule.keyBy(x -> x.getHost()), alarmGrade);
+        PatternStream<AlterStruct> alarmIncreamStream =
+                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), alarmIncream);
         DataStream<AlterStruct> alarmStream =
                 patternStream.select(new PatternSelectFunction<AlterStruct, AlterStruct>() {
                     @Override
@@ -196,6 +198,14 @@ public class StreamToFlinkV3 {
                         return map.values().iterator().next().get(2);
                     }
                 });
+        DataStream<AlterStruct> alarmStreamIncream =
+                alarmIncreamStream.select(new PatternSelectFunction<AlterStruct, AlterStruct>() {
+                    @Override
+                    public AlterStruct select(Map<String, List<AlterStruct>> map) throws Exception {
+                        return map.values().iterator().next().get(2);
+                    }
+                });
+        List<DataStream> list = new ArrayList<>();
         return alarmStream;
     }
 
