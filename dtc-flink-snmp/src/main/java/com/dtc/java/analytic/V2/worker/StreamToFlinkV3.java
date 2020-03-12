@@ -5,9 +5,7 @@ import com.dtc.java.analytic.V2.common.model.DataStruct;
 import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.dtc.java.analytic.V2.common.utils.ExecutionEnvUtil;
 import com.dtc.java.analytic.V2.common.utils.KafkaConfigUtil;
-import com.dtc.java.analytic.V2.map.function.LinuxMapFunction;
 import com.dtc.java.analytic.V2.map.function.WinMapFunction;
-import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
 import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
@@ -108,67 +106,60 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new WinProcessMapFunction());
-        winProcess.print("test");
 
         //windows数据全量写opentsdb
         winProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
 
         //windows数据进行告警规则判断并将告警数据写入mysql
-        DataStream<AlterStruct> alarmStreamWin = getAlarm(winProcess);
-        alarmStreamWin.print("alarm:----");
-        alarmStreamWin.addSink(new MysqlSink(properties));
+        List<DataStream<AlterStruct>> alarm = getAlarm(winProcess);
+        alarm.forEach(e -> e.addSink(new MysqlSink(properties)));
 
-        //linux指标数据处理
-        SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
-                .select("Linux")
-                .map(new LinuxMapFunction())
-                .keyBy("Host")
-                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
-                .process(new LinuxProcessMapFunction());
-
-        //Linux数据全量写opentsdb
-        linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
-
-        //Linux数据进行告警规则判断并将告警数据写入mysql
-        DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
-
-        alarmStreamLinux.addSink(new MysqlSink(properties));
+//        //linux指标数据处理
+//        SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
+//                .select("Linux")
+//                .map(new LinuxMapFunction())
+//                .keyBy("Host")
+//                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
+//                .process(new LinuxProcessMapFunction());
+//
+//        //Linux数据全量写opentsdb
+//        linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
+//
+//        //Linux数据进行告警规则判断并将告警数据写入mysql
+//        DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
+//
+//        alarmStreamLinux.addSink(new MysqlSink(properties));
 
         //告警数据实时发送kafka
         env.execute("Snmp-Data-Process");
     }
 
-    private static DataStream<AlterStruct> getAlarm(SingleOutputStreamOperator<DataStruct> event) {
+    private static List<DataStream<AlterStruct>> getAlarm(SingleOutputStreamOperator<DataStruct> event) {
         SingleOutputStreamOperator<AlterStruct> alert_rule = event.connect(alarmDataStream.broadcast(ALARM_RULES))
                 .process(getAlarmFunction());
-        alert_rule.print("测试数据：");
 
-        AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
+//        AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
+        AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipPastLastEvent();
         Pattern<AlterStruct, ?> alarmGrade =
-                Pattern.<AlterStruct>begin("begin", skipStrategy)
+                Pattern.<AlterStruct>begin("begin", skipStrategy).subtype(AlterStruct.class)
                         .where(new SimpleCondition<AlterStruct>() {
                             @Override
                             public boolean filter(AlterStruct s) {
-                                System.out.println("一级告警");
                                 return s.getLevel().equals("一级告警");
                             }
                         }).or(new SimpleCondition<AlterStruct>() {
                     @Override
                     public boolean filter(AlterStruct s) {
-                        System.out.println("二级告警");
-
                         return s.getLevel().equals("二级告警");
                     }
                 }).or(new SimpleCondition<AlterStruct>() {
                     @Override
                     public boolean filter(AlterStruct s) {
-                        System.out.println("三级告警");
-
                         return s.getLevel().equals("三级告警");
                     }
                 }).times(3).within(Time.seconds(10));
         Pattern<AlterStruct, ?> alarmIncream
-                = Pattern.<AlterStruct>begin("begin", skipStrategy)
+                = Pattern.<AlterStruct>begin("begin", skipStrategy).subtype(AlterStruct.class)
                 .where(new SimpleCondition<AlterStruct>() {
                     @Override
                     public boolean filter(AlterStruct alterStruct) {
@@ -186,16 +177,16 @@ public class StreamToFlinkV3 {
                         return alterStruct.getLevel().equals("三级告警");
                     }
 
-                }).times(2).within(Time.seconds(10));
+                }).times(2).within(Time.seconds(12));
         PatternStream<AlterStruct> patternStream =
-                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), alarmGrade);
+                CEP.pattern(alert_rule.keyBy(AlterStruct::getGaojing), alarmGrade);
         PatternStream<AlterStruct> alarmIncreamStream =
-                CEP.pattern(alert_rule.keyBy(x -> x.getHost()), alarmIncream);
+                CEP.pattern(alert_rule.keyBy(AlterStruct::getGaojing), alarmIncream);
         DataStream<AlterStruct> alarmStream =
                 patternStream.select(new PatternSelectFunction<AlterStruct, AlterStruct>() {
                     @Override
                     public AlterStruct select(Map<String, List<AlterStruct>> map) throws Exception {
-                        return map.values().iterator().next().get(2);
+                        return map.values().iterator().next().get(0);
                     }
                 });
         DataStream<AlterStruct> alarmStreamIncream =
@@ -205,8 +196,10 @@ public class StreamToFlinkV3 {
                         return map.values().iterator().next().get(2);
                     }
                 });
-        List<DataStream> list = new ArrayList<>();
-        return alarmStream;
+        List<DataStream<AlterStruct>> list = new ArrayList<>();
+        list.add(alarmStream);
+        list.add(alarmStreamIncream);
+        return list;
     }
 
     private static BroadcastProcessFunction<DataStruct, Map<String, String>, AlterStruct> getAlarmFunction() {
@@ -220,9 +213,8 @@ public class StreamToFlinkV3 {
             public void processElement(DataStruct value, ReadOnlyContext ctx, Collector<AlterStruct> out) throws Exception {
                 ReadOnlyBroadcastState<String, String> broadcastState = ctx.getBroadcastState(ALARM_RULES);
                 String host_ip = value.getHost();
-                String code = value.getZbFourName().replace("_",".");
+                String code = value.getZbFourName().replace("_", ".");
                 String weiyi = host_ip + "." + code;
-                System.out.println(host_ip);
                 if (!broadcastState.contains(weiyi)) {
                     return;
                 }
@@ -251,15 +243,15 @@ public class StreamToFlinkV3 {
                 double data_value = Double.parseDouble(value.getValue());
                 if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "一级告警", unique_id, String.valueOf(num_1));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "一级告警", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                     out.collect(alter_message);
                 } else if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "二级告警", unique_id, String.valueOf(num_2));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "二级告警", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                     out.collect(alter_message);
                 } else if (data_value > num_3 || data_value == num_2) {
                     String system_time = String.valueOf(System.currentTimeMillis());
-                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "三级告警", unique_id, String.valueOf(num_3));
+                    AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "三级告警", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                     out.collect(alter_message);
                 }
             }

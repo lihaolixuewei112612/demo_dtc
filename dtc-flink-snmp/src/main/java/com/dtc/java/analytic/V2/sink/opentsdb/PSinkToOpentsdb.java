@@ -70,13 +70,13 @@ public class PSinkToOpentsdb extends RichSinkFunction<DataStruct> {
                     String metircs = metric + "-" + host;
                     builder.addMetric(metircs)
                             .setDataPoint(time, result)
-                            .addTag("type", "dpi")
+                            .addTag("type", "win")
                             .addTag("host", host);
                 }else {
-                    String metircs = metric + "-" + host + "-" + id;
+                    String metircs = metric + "-" + id+ "-" + host ;
                     builder.addMetric(metircs)
                             .setDataPoint(time, result)
-                            .addTag("type", "dpi")
+                            .addTag("type", "win")
                             .addTag("lastcode", id)
                             .addTag("host", host);
                 }
@@ -86,10 +86,9 @@ public class PSinkToOpentsdb extends RichSinkFunction<DataStruct> {
                         .addTag("host", host);
             }
             Response response1 = httpClient.pushMetrics(builder, ExpectResponse.SUMMARY);
+            boolean success = response1.isSuccess();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
-
 }

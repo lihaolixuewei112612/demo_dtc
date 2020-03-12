@@ -25,4 +25,5 @@ public class AlterStruct {
     private String level;
     private String unique_id;
     private String yuzhi;
+    private String gaojing;
 }

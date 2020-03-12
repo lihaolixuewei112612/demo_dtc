@@ -56,10 +56,7 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
 
     @Override
     public void invoke(AlterStruct value, Context context) throws Exception {
-        System.out.println("write data to mysql is begin...");
-
         try {
-
             String system_id = value.getSystem_name();
             String host_ip = value.getHost();
             String itmes_code = value.getZbFourName();
@@ -85,7 +82,6 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
             preparedStatement.setString(11,unique_id);
             preparedStatement.setString(12,alarm_garde);
             preparedStatement.executeUpdate();
-            System.out.println("write data to mysql is success!!!");
         }catch (Exception e){
             e.printStackTrace();
         }

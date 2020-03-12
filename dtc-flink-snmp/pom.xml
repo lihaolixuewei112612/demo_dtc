@@ -220,7 +220,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.dtc.java.analytic.snmp.StreamToFlinkV2</mainClass>
+                            <mainClass>com.dtc.java.analytic.V2.worker.StreamToFlinkV3</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
