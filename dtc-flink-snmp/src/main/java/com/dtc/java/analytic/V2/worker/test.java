@@ -1,5 +1,6 @@
 package com.dtc.java.analytic.V2.worker;
 
+import com.alibaba.fastjson.JSONObject;
 import com.dtc.java.analytic.V2.common.model.AlterStruct;
 import com.dtc.java.analytic.V2.common.model.DataStruct;
 import com.dtc.java.analytic.V2.common.model.SourceEvent;
@@ -33,11 +34,10 @@ import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 /**
@@ -49,23 +49,21 @@ import java.util.concurrent.TimeUnit;
 public class test {
     public static void main(String[] args) throws Exception {
 
-        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
-        Map<String, String> stringStringMap = parameterTool.toMap();
-        Properties properties = new Properties();
-        for (String key : stringStringMap.keySet()) {
-            if (key.startsWith("mysql")) {
-                properties.setProperty(key, stringStringMap.get(key));
-            }
-        }
-        int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
-        StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
-        env.getConfig().setGlobalJobParameters(parameterTool);
-//        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
-        DataStreamSource<SourceEvent> streamSource = KafkaConfigUtil.buildSource(env);
-        streamSource.print("kafka");
+        Map<String, String> map = new HashMap<>();
+        map.put("10.3.7.231_1", "a");
+        map.put("10.3.7.231_2", "b");
+        map.put("10.3.7.231_3", "c");
+        map.put("10.3.7.232_1", "a");
+        map.put("10.3.7.232_2", "b");
+        map.put("10.3.7.232_3", "c");
+        String str = "123";
+        double v = Double.parseDouble(str);
+        System.out.println(v);
 
-
-        env.execute("Snmp-Data-Process");
+        String sjiachun = "12333";
+        BigDecimal db = new BigDecimal(sjiachun);
+        String ii = db.toPlainString();
+        System.out.println(ii);
     }
 
 

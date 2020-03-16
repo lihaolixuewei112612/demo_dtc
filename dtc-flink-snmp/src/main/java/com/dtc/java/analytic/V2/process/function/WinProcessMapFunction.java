@@ -9,13 +9,16 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created on 2020-02-21
@@ -35,6 +38,7 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
     private Map<String, String> diskCaption = new HashMap();
     //cpu的核数
     Map<String, String> cpuNum = new HashMap<>();
+    Map<String, Map<String, String>> cpuSys = new HashMap<String, Map<String, String>>();
     private boolean flag = false;
 
     @Override
@@ -87,20 +91,30 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
             if ("101_100_101_101_101".equals(wc.getZbFourName())) {
                 if (!cpuNum.containsKey(keyValue)) {
                     cpuNum.put(keyValue, "1");
+                    {
+                    }
+
                     continue;
                 } else {
                     flag = true;
                 }
             }
+            List<String> list = null;
             if (flag) {
+                list = new ArrayList<>();
+                for (Map.Entry<String, String> entity : cpuNum.entrySet()) {
+                    if (entity.getKey().startsWith(wc.getHost())) {
+                        list.add(entity.getKey());
+                    }
+                }
                 if ("101_100_101_101_101".equals(wc.getZbFourName())) {
-                    if (cpuCount+1 != cpuNum.size()) {
+                    if (cpuCount + 1 != list.size()) {
                         cpuCount += 1;
                         cpu_sum += Double.parseDouble(wc.getValue());
                         continue;
                     } else {
                         if (count < 1) {
-                            double result = cpu_sum / cpuNum.size();
+                            double result = cpu_sum / list.size();
                             collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
                             count += 1;
                             continue;
@@ -163,7 +177,10 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
                             double valueA = Double.parseDouble(diskBlockNum.get(keyA));
                             double valueB = Double.parseDouble(diskBlockSize.get(keyB));
                             if ((!diskCaption.containsKey(keyA)) || (diskCaption.containsKey(keyA) && !(diskCaption.get(keyA).equals(String.valueOf(valueA * valueB))))) {
-                                diskCaption.put(keyA, String.valueOf(valueA * valueB));
+                                double result = valueA * valueB;
+                                BigDecimal db = new BigDecimal(result);
+                                String jieguo = db.toPlainString();
+                                diskCaption.put(keyA, jieguo);
                             }
                         }
                     }
@@ -173,26 +190,45 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
              * 每个磁盘使用率
              * 虚拟/物理内存使用率
              * */
+            List<String> list1 = new ArrayList<>();
+            for (Map.Entry<String, String> entity : diskBlockSize.entrySet()) {
+                if (entity.getKey().startsWith(wc.getHost())) {
+                    list1.add(entity.getKey());
+                }
+            }
             if ("101_100_103_106_106".equals(wc.getZbFourName()) && diskCaption.containsKey(keyValue)) {
                 Double used_disk = Double.parseDouble(wc.getValue()) * Double.parseDouble(diskBlockSize.get(keyValue));
                 Double diskUsedCapacity = Double.parseDouble(diskCaption.get(keyValue));
                 //磁盘使用率
-                Double rato_used_disk = used_disk / diskUsedCapacity;
-                collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_107_107", wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                if (diskUsedCapacity == 0) {
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_107_107", wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(0)));
+                }else {
+                    double rato_used_disk = used_disk / diskUsedCapacity;
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_107_107", wc.getZbLastCode(), wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                }
                 usedDiskMap.put(keyValue, wc.getValue());
-                if (usedDiskMap.size() == diskBlockSize.size()) {
-                    Double re = 0.0;
-                    Double res = 0.0;
+
+                Double re = 0.0;
+                Double res = 0.0;
+                if (usedDiskMap.size() == list1.size()) {
                     for (String s : usedDiskMap.values()) {
                         re += Double.parseDouble(s);
                     }
-                    for (String s : diskCaption.values()) {
-                        res += Double.parseDouble(s);
+                    for (String s1 : diskCaption.values()) {
+                        res += Double.parseDouble(s1);
                     }
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_108_108", "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rato_used_disk)));
+                    if(res==0){
+                        collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_108_108", "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(0)));
+                    }else {
+                        double zonghe_disk_rate = re / res;
+                        BigDecimal db = new BigDecimal(zonghe_disk_rate);
+                        String result = db.toPlainString();
+                        collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), "101_100_103_108_108", "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), result));
+                    }
                 }
                 continue;
             }
+
             /**
              *
              * 网络接口相关
@@ -206,13 +242,15 @@ public class WinProcessMapFunction extends ProcessWindowFunction<DataStruct, Dat
                 rec_total += Double.valueOf(wc.getValue());
                 rec_total_count += 1;
                 if (rec_total_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(rec_total)));
+                    double result = rec_total/(1024*1024);
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
                 }
             } else if ("101_100_104_103_103".equals(wc.getZbFourName())) {
                 sent_total += Double.valueOf(wc.getValue());
                 sent_total_count += 1;
                 if (sent_total_count == net_num) {
-                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(sent_total)));
+                    double result = sent_total/(1024*1024);
+                    collector.collect(new DataStruct(wc.getSystem_name(), wc.getHost(), wc.getZbFourName(), "", wc.getNameCN(), wc.getNameEN(), wc.getTime(), String.valueOf(result)));
                 }
             } else if ("101_100_104_104_104".equals(wc.getZbFourName())) {
                 discard_package_in_num += Double.valueOf(wc.getValue());

@@ -5,7 +5,9 @@ import com.dtc.java.analytic.V2.common.model.DataStruct;
 import com.dtc.java.analytic.V2.common.model.SourceEvent;
 import com.dtc.java.analytic.V2.common.utils.ExecutionEnvUtil;
 import com.dtc.java.analytic.V2.common.utils.KafkaConfigUtil;
+import com.dtc.java.analytic.V2.map.function.LinuxMapFunction;
 import com.dtc.java.analytic.V2.map.function.WinMapFunction;
+import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
 import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
@@ -106,32 +108,32 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new WinProcessMapFunction());
-
+        winProcess.print("win1---:");
         //windows数据全量写opentsdb
         winProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
 
         //windows数据进行告警规则判断并将告警数据写入mysql
-        List<DataStream<AlterStruct>> alarm = getAlarm(winProcess);
-        alarm.forEach(e -> e.addSink(new MysqlSink(properties)));
+        List<DataStream<AlterStruct>> alarmWindows = getAlarm(winProcess);
+        alarmWindows.forEach(e -> e.addSink(new MysqlSink(properties)));
 
-//        //linux指标数据处理
-//        SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
-//                .select("Linux")
-//                .map(new LinuxMapFunction())
-//                .keyBy("Host")
-//                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
-//                .process(new LinuxProcessMapFunction());
-//
-//        //Linux数据全量写opentsdb
-//        linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
-//
-//        //Linux数据进行告警规则判断并将告警数据写入mysql
-//        DataStream<AlterStruct> alarmStreamLinux = getAlarm(linuxProcess);
-//
-//        alarmStreamLinux.addSink(new MysqlSink(properties));
+        //linux指标数据处理
+        SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
+                .select("Linux")
+                .map(new LinuxMapFunction())
+                .keyBy("Host")
+                .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
+                .process(new LinuxProcessMapFunction());
+        linuxProcess.print("111--:");
 
+        //Linux数据全量写opentsdb
+        linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
+
+        //Linux数据进行告警规则判断并将告警数据写入mysql
+        List<DataStream<AlterStruct>> alarmLinux = getAlarm(linuxProcess);
+        alarmLinux.forEach(e->e.print("2222---:"));
+        alarmLinux.forEach(e -> e.addSink(new MysqlSink(properties)));
         //告警数据实时发送kafka
-        env.execute("Snmp-Data-Process");
+        env.execute("Dtc-Alarm-Flink-Process");
     }
 
     private static List<DataStream<AlterStruct>> getAlarm(SingleOutputStreamOperator<DataStruct> event) {

@@ -59,7 +59,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                  *  主机系统参数：系统启动时间，这一块不会执行。等待处理
                  */
                 if ("101_101_101_106_106".equals(in.getZbFourName())) {
-                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
+//                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
                     continue;
                 }
 
