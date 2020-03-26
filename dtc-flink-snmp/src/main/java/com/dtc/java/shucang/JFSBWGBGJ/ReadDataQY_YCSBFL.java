@@ -1,4 +1,4 @@
-package com.dtc.java.shucang.JGPF;
+package com.dtc.java.shucang.JFSBWGBGJ;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
@@ -13,16 +13,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜设备总数
+ * @Description : 未关闭告警设备类型分布情况
  */
 @Slf4j
-public class ReadDataFM extends RichSourceFunction<Order> {
+public class ReadDataQY_YCSBFL extends RichSourceFunction<Map<String,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -46,24 +45,28 @@ public class ReadDataFM extends RichSourceFunction<Order> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select a.room,a.position,a.box,count(*) as num from asset a group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
+           String sql =  "select m.room,m.zc_name,count(*) as num from (select b.room as room,a.asset_id as a_id,c.`name` as zc_name from asset_category_mapping a left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id) m where m.a_id not in (select DISTINCT asset_id from alarm b where b.`status`=2) GROUP BY m.room,m.zc_name having m.room is not null and m.zc_name is not null";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Order> ctx) throws Exception {
+    public void run(SourceContext<Map<String, Integer>> ctx) throws Exception {
+        Map<String,Integer> map = new HashMap<>();
         Tuple4<String, String, Short, String> test = null;
-        Integer id = 0;
+        Integer id =0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
+                String room = resultSet.getString("room").trim();
+                String position = resultSet.getString("zc_name").trim();
                 id = resultSet.getInt("num");
-                String room = resultSet.getString("room");
-                Order order = new Order(room, id);
-                ctx.collect(order);
+                map.put(room+"_"+position, id);
             }
-            Thread.sleep(1000 * 6);
+            log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
+            ctx.collect(map);
+            map.clear();
+            Thread.sleep(1000);
         }
 
     }

@@ -67,7 +67,7 @@
 //        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
 //        int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
 //        StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
-//        DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new ReadDataFM()).setParallelism(1);
+//        DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new ReadDataZS()).setParallelism(1);
 //        DataStreamSource<String> streamSource = KafkaConfigUtil.buildSource(env);
 ////        DataStreamSource<String> dataStreamSource = env.socketTextStream("172.20.10.2", 8080, '\n');
 //

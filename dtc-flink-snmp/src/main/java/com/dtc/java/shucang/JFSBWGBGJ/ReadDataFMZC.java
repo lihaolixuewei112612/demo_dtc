@@ -1,8 +1,10 @@
-package com.dtc.java.shucang.JGPF;
+package com.dtc.java.shucang.JFSBWGBGJ;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
+import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
+import com.dtc.java.shucang.JGPF.Order;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -12,17 +14,14 @@ import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜设备总数
+ * @Description : 各机房各区域各机柜正常机器总数
  */
 @Slf4j
-public class ReadDataFM extends RichSourceFunction<Order> {
+public class ReadDataFMZC extends RichSourceFunction<ZongShu> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -46,26 +45,27 @@ public class ReadDataFM extends RichSourceFunction<Order> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select a.room,a.position,a.box,count(*) as num from asset a group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
+           String sql =  "select a.room,a.position,a.box,count(*) as num from asset a where a.id not in (select distinct asset_id from alarm) group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Order> ctx) throws Exception {
+    public void run(SourceContext<ZongShu> ctx) throws Exception {
         Tuple4<String, String, Short, String> test = null;
-        Integer id = 0;
+        int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                id = resultSet.getInt("num");
-                String room = resultSet.getString("room");
-                Order order = new Order(room, id);
+                String room = resultSet.getString("room").trim();
+                String position = resultSet.getString("position").trim();
+                String box = resultSet.getString("box").trim();
+                num = resultSet.getInt("num");
+                ZongShu order = new ZongShu(room,position,box,num);
                 ctx.collect(order);
             }
             Thread.sleep(1000 * 6);
         }
-
     }
 
     @Override
