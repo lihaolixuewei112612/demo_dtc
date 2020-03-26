@@ -1,9 +1,9 @@
-package com.dtc.java.shucang.JFSBWGBGJ;
+package com.dtc.java.shucang.demo;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
+import com.dtc.java.shucang.JFSBWGBGJ.model.YCShu;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -19,10 +19,10 @@ import java.util.Map;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各区域各机柜设备未关闭告警数
+ * @Description : 各机房各区域设备正常与不正常数
  */
 @Slf4j
-public class ReadDataQY_WGBGJ extends RichSourceFunction<ZongShu> {
+public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -46,27 +46,32 @@ public class ReadDataQY_WGBGJ extends RichSourceFunction<ZongShu> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-           String sql =  "select a.room,a.position,a.box,count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2) group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
+            String sql = "select m.room,m.position,m.box,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.position as position,a.box as box,count(*) as num from asset a group by a.room,a.position ,a.box having a.room is not null and a.position is not null and a.box is not null) m left join (select b.room as room,b.position as position,b.box as box,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.position,b.box having b.room is not null and b.position is not null and b.box is not null) n on m.room=n.room and m.position=n.position and m.box=n.box";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<ZongShu> ctx) throws Exception {
+    public void run(SourceContext<YCShu> ctx) throws Exception {
+        Map<String, String> map = new HashMap<>();
+        YCShu ycshu = null;
         Tuple4<String, String, Short, String> test = null;
-        int num = 0;
+        Integer id = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 String room = resultSet.getString("room").trim();
                 String position = resultSet.getString("position").trim();
-                String box = resultSet.getString("box").trim();
-                num = resultSet.getInt("num");
-                ZongShu order = new ZongShu(room,position,box,num,3);
-                ctx.collect(order);
+                String box = resultSet.getString("box");
+                double zc = resultSet.getInt("zc");
+                double bzc = resultSet.getInt("bzc");
+                Long time = System.currentTimeMillis();
+                ycshu = new YCShu(room,position,box,zc,bzc);
+                ctx.collect(ycshu);
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(1000*6);
         }
+
     }
 
     @Override

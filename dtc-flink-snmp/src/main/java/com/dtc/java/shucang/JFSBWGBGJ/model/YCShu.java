@@ -1,9 +1,6 @@
 package com.dtc.java.shucang.JFSBWGBGJ.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * @Author : lihao
@@ -12,11 +9,11 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class YCShu extends ZongShu{
-    private double bzc;
-
-    public YCShu(String room, String position, String box, double num, double bzc) {
-        super(room, position, box, num);
-        this.bzc = bzc;
-    }
+@AllArgsConstructor
+public class YCShu {
+    String room;
+    String position;
+    String box;
+    double num;
+    double bzc;
 }

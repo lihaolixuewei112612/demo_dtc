@@ -61,7 +61,7 @@ public class ReadDataZS extends RichSourceFunction<ZongShu> {
                 String position = resultSet.getString("position").trim();
                 String box = resultSet.getString("box").trim();
                 num = resultSet.getInt("num");
-                ZongShu order = new ZongShu(room,position,box,num);
+                ZongShu order = new ZongShu(room,position,box,num,1);
                 ctx.collect(order);
             }
             Thread.sleep(1000 * 6);

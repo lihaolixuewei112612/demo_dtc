@@ -6,7 +6,6 @@ import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
 import com.dtc.java.shucang.JFSBWGBGJ.model.YCShu;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
-import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
@@ -47,7 +46,7 @@ public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select m.room,m.position,m.box,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.position as position,a.box as box,count(*) as num from asset a group by a.room,a.position ,a.box having a.room is not null and a.position is not null and a.box is not null) m left join (select b.room as room,b.position as position,b.box as box,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.position,b.box having a.room is not null and a.position is not null and a.box is not null) n on m.room=n.room and m.position=n.position and m.box=n.box";
+            String sql = "select m.room,m.position,m.box,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.position as position,a.box as box,count(*) as num from asset a group by a.room,a.position ,a.box having a.room is not null and a.position is not null and a.box is not null) m left join (select b.room as room,b.position as position,b.box as box,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.position,b.box having b.room is not null and b.position is not null and b.box is not null) n on m.room=n.room and m.position=n.position and m.box=n.box";
             ps = connection.prepareStatement(sql);
         }
     }
