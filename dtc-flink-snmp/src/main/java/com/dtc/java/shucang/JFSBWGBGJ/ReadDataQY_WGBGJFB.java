@@ -44,7 +44,7 @@
 //        connection = MySQLUtil.getConnection(driver, url, username, password);
 //
 //        if (connection != null) {
-//            String sql = "select m.room,m.position,m.zc_name,count(*) as num from (select b.room as room,b.position as position,a.asset_id as a_id,c.`name` as zc_name from asset_category_mapping a left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id) m where m.a_id not in (select DISTINCT asset_id from alarm b where b.`status`=2) GROUP BY m.room,m.position,m.zc_name having m.room is not null and m.zc_name is not null and m.position is not null";
+//            String sql = "select m.room,m.partitions,m.zc_name,count(*) as num from (select b.room as room,b.partitions as partitions,a.asset_id as a_id,c.`name` as zc_name from asset_category_mapping a left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id) m where m.a_id not in (select DISTINCT asset_id from alarm b where b.`status`=2) GROUP BY m.room,m.partitions,m.zc_name having m.room is not null and m.zc_name is not null and m.partitions is not null";
 //            ps = connection.prepareStatement(sql);
 //        }
 //    }
@@ -56,13 +56,13 @@
 //            ResultSet resultSet = ps.executeQuery();
 //            while (resultSet.next()) {
 //                String room = resultSet.getString("room").trim();
-//                String position = resultSet.getString("position").trim();
+//                String partitions = resultSet.getString("partitions").trim();
 //                String zc_name = resultSet.getString("zc_name").trim();
 //                num = resultSet.getInt("num");
-//                ZongShu order = new ZongShu(room, position, zc_name, num);
+//                ZongShu order = new ZongShu(room, partitions, zc_name, num);
 //                ctx.collect(order);
 //            }
-//            Thread.sleep(1000 * 6);
+//            Thread.sleep(1000 * 60);
 //        }
 //    }
 //

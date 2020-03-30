@@ -1,8 +1,8 @@
 package com.dtc.java.shucang.JFSBWGBGJ.sink;
 
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
-import com.dtc.java.analytic.V2.common.model.AlterStruct;
-import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
+import com.dtc.java.shucang.JFSBWGBGJ.model.BoxResultModel;
+import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
@@ -18,14 +18,14 @@ import java.util.Properties;
  * @author :hao.li
  */
 
-public class MysqlSink extends RichSinkFunction<ZongShu> {
+public class MysqlSinkJFYC extends RichSinkFunction<Tuple5<String, String, String, String, Integer>> {
     private Properties properties;
     private Connection connection;
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private PreparedStatement preparedStatement;
     String str;
 
-    public MysqlSink(Properties prop) {
+    public MysqlSinkJFYC(Properties prop) {
         this.properties = prop;
     }
 
@@ -45,7 +45,7 @@ public class MysqlSink extends RichSinkFunction<ZongShu> {
         connection = DriverManager.getConnection(mysqlUrl, userName
                 , passWord);//写入mysql数据库
 //        String sql = null;
-        String sql = "replace into num3(riqi,room,zhNum) values(?,?,?)";
+        String sql = "replace into jfyc(riqi,asset_id,name,level_id,ip,num,js_time) values(?,?,?,?,?,?,?)";
         preparedStatement = connection.prepareStatement(sql);
         //insert sql在配置文件中
         super.open(parameters);
@@ -64,15 +64,25 @@ public class MysqlSink extends RichSinkFunction<ZongShu> {
     }
 
     @Override
-    public void invoke(ZongShu value, Context context) throws Exception {
+    public void invoke(Tuple5<String, String, String, String, Integer> value, Context context) throws Exception {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        String current = sdf.format(System.currentTimeMillis());
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        String riqi = sdf.format(System.currentTimeMillis());
+        String js_time = sdf1.format(System.currentTimeMillis());
+
         try {
-            String room = value.getRoom();
-            double num = value.getNum();
-            preparedStatement.setString(1, current);
-            preparedStatement.setString(2, room);
-            preparedStatement.setInt(3, (int) num);
+            String asset_id = value.f0;
+            String name = value.f1;
+            String level_id = value.f2;
+            String ip = value.f3;
+            double num = value.f4;
+            preparedStatement.setString(1, riqi);
+            preparedStatement.setString(2, asset_id);
+            preparedStatement.setString(3,name);
+            preparedStatement.setString(4,level_id);
+            preparedStatement.setString(5, ip);
+            preparedStatement.setInt(6, (int) num);
+            preparedStatement.setString(7,js_time);
             preparedStatement.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();

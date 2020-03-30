@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PositionResultModel {
-    private String position;
+    private String partitions;
     private String room;
     private double allNum;
     private double zcNum;

@@ -12,7 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 public class YCShu {
     String room;
-    String position;
+    String partitions;
     String box;
     double num;
     double bzc;

@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BoxJoinModel {
     private String box;
-    private String position;
+    private String partitions;
     private String room;
     private double allNum;
     private double zcNum;

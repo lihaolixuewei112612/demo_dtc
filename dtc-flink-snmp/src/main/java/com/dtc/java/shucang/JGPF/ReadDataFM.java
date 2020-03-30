@@ -46,7 +46,7 @@ public class ReadDataFM extends RichSourceFunction<Order> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select a.room,a.position,a.box,count(*) as num from asset a group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
+            String sql = "select a.room,a.partitions,a.box,count(*) as num from asset a group by a.room,a.partitions,a.box having a.room is not null and a.partitions is not null and a.box is not null";
             ps = connection.prepareStatement(sql);
         }
     }

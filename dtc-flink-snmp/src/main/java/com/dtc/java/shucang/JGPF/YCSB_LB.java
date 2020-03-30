@@ -3,8 +3,10 @@ package com.dtc.java.shucang.JGPF;
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
+import com.dtc.java.shucang.JFSBWGBGJ.model.YCSB_LB_Model;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
+import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
@@ -21,7 +23,7 @@ import java.util.Map;
  * @Description : 各机房未关闭告警数
  */
 @Slf4j
-public class ReadDataZC_BZC extends RichSourceFunction<Map<Integer, String>> {
+public class YCSB_LB extends RichSourceFunction<YCSB_LB_Model> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -45,28 +47,27 @@ public class ReadDataZC_BZC extends RichSourceFunction<Map<Integer, String>> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-           String sql = "select m.room,m.position,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.position as position,count(*) as num from asset a group by a.room,a.position having a.room is not null and a.position is not null) m left join (select b.room as room,b.position as position,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.position having b.room is not null and b.position is not null) n on m.room=n.room and m.position=n.position";
+           String sql = "select a.asset_id,a.level_id,count(*) as num,b.`name`,b.ipv4 as ip,b.room,b.partitions,b.box from alarm a left join asset b on b.id =a.asset_id group by a.asset_id,a.level_id having b.room is not null and b.`partitions` is not null and b.box is not null";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Map<Integer, String>> ctx) throws Exception {
-        Map<Integer, String> map = new HashMap<>();
-        Tuple4<String, String, Short, String> test = null;
-        Integer id =0;
+    public void run(SourceContext<YCSB_LB_Model> ctx) throws Exception {
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
-//            resultSet.last();
-//            resultSet.getRow();
             while (resultSet.next()) {
-                id = resultSet.getInt("num");
+                String asset_id = resultSet.getString("asset_id").trim();
+                String level_id = resultSet.getString("level_id").trim();
+                String name = resultSet.getString("name").trim();
+                String ip = resultSet.getString("ip").trim();
+                int num = resultSet.getInt("num");
                 String room = resultSet.getString("room");
-                map.put(id, room);
+                String partitions = resultSet.getString("partitions");
+                String box = resultSet.getString("box");
+                YCSB_LB_Model ycsb_lb_model = new YCSB_LB_Model(asset_id,level_id,num,name,ip,room,partitions,box);
+                ctx.collect(ycsb_lb_model);
             }
-            log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
-            ctx.collect(map);
-            map.clear();
             Thread.sleep(1000);
         }
 

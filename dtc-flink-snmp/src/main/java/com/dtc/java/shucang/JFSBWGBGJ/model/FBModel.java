@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class FBModel {
     private String room;
-    private String position;
+    private String partitions;
     private double num;
 }

@@ -59,14 +59,14 @@ public class ReadDataQY_YCSBFL extends RichSourceFunction<Map<String,Integer>> {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 String room = resultSet.getString("room").trim();
-                String position = resultSet.getString("zc_name").trim();
+                String partitions = resultSet.getString("zc_name").trim();
                 id = resultSet.getInt("num");
-                map.put(room+"_"+position, id);
+                map.put(room+"_"+partitions, id);
             }
             log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
             ctx.collect(map);
             map.clear();
-            Thread.sleep(1000);
+            Thread.sleep(1000*6);
         }
 
     }

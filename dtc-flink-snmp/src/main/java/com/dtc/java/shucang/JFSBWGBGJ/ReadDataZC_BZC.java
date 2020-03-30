@@ -46,7 +46,7 @@ public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select m.room,m.position,m.box,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.position as position,a.box as box,count(*) as num from asset a group by a.room,a.position ,a.box having a.room is not null and a.position is not null and a.box is not null) m left join (select b.room as room,b.position as position,b.box as box,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.position,b.box having b.room is not null and b.position is not null and b.box is not null) n on m.room=n.room and m.position=n.position and m.box=n.box";
+            String sql = "select m.room,m.partitions,m.box,n.num as zc,(m.num-n.num) as bzc from (select a.room as room ,a.partitions as partitions,a.box as box,count(*) as num from asset a group by a.room,a.partitions ,a.box having a.room is not null and a.partitions is not null and a.box is not null) m left join (select b.room as room,b.partitions as partitions,b.box as box,count(*) as num from asset b where b.id not in (select distinct asset_id from alarm) group by b.room,b.partitions,b.box having b.room is not null and b.partitions is not null and b.box is not null) n on m.room=n.room and m.partitions=n.partitions and m.box=n.box";
             ps = connection.prepareStatement(sql);
         }
     }
@@ -61,12 +61,12 @@ public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 String room = resultSet.getString("room").trim();
-                String position = resultSet.getString("position").trim();
+                String partitions = resultSet.getString("partitions").trim();
                 String box = resultSet.getString("box");
                 double zc = resultSet.getInt("zc");
                 double bzc = resultSet.getInt("bzc");
                 Long time = System.currentTimeMillis();
-                ycshu = new YCShu(room,position,box,zc,bzc);
+                ycshu = new YCShu(room,partitions,box,zc,bzc);
                 ctx.collect(ycshu);
             }
             Thread.sleep(1000*6);

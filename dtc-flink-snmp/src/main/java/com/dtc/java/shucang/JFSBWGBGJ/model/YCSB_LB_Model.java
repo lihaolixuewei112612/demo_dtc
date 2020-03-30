@@ -6,19 +6,19 @@ import lombok.NoArgsConstructor;
 
 /**
  * @Author : lihao
- * Created on : 2020-03-26
+ * Created on : 2020-03-27
  * @Description : TODO描述类作用
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoxResultModel extends PositionResultModel {
-
-    private String box;
-    private String partitions;
+public class YCSB_LB_Model {
+    private String asset_id;
+    private String level_id;
+    private int num;
+    private String name;
+    private String ip;
     private String room;
-    private double allNum;
-    private double zcNum;
-    private double wgbgjNum;
-    private double record;
+    private String partitions;
+    private String box;
 }

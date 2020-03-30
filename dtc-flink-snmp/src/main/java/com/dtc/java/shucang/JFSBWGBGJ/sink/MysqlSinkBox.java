@@ -1,6 +1,8 @@
 package com.dtc.java.shucang.JFSBWGBGJ.sink;
+
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
-import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
+import com.dtc.java.shucang.JFSBWGBGJ.model.BoxResultModel;
+import com.dtc.java.shucang.JFSBWGBGJ.model.PositionResultModel;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
@@ -16,14 +18,17 @@ import java.util.Properties;
  * @author :hao.li
  */
 
-public class MysqlSink2 extends RichSinkFunction<ZongShu> {
+public class MysqlSinkBox extends RichSinkFunction<BoxResultModel> {
     private Properties properties;
     private Connection connection;
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private PreparedStatement preparedStatement;
-    public MysqlSink2(Properties prop){
+    String str;
+
+    public MysqlSinkBox(Properties prop) {
         this.properties = prop;
     }
+
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
@@ -36,12 +41,12 @@ public class MysqlSink2 extends RichSinkFunction<ZongShu> {
         String port = properties.get(PropertiesConstants.MYSQL_PORT).toString();
         String database = properties.get(PropertiesConstants.MYSQL_DATABASE).toString();
 
-        String mysqlUrl= "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = DriverManager.getConnection(mysqlUrl,userName
-               ,passWord);//写入mysql数据库
+        String mysqlUrl = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
+        connection = DriverManager.getConnection(mysqlUrl, userName
+                , passWord);//写入mysql数据库
 //        String sql = null;
-            String sql ="replace into num3(riqi,room,wgbgjNum) values(?,?,?)";
-            preparedStatement = connection.prepareStatement(sql);
+        String sql = "replace into jigui(riqi,room,partitions,box,allNum,zcNum,wgbgiNum,record,js_time) values(?,?,?,?,?,?,?,?,?)";
+        preparedStatement = connection.prepareStatement(sql);
         //insert sql在配置文件中
         super.open(parameters);
     }
@@ -49,27 +54,41 @@ public class MysqlSink2 extends RichSinkFunction<ZongShu> {
     @Override
     public void close() throws Exception {
         super.close();
-        if(preparedStatement != null){
+        if (preparedStatement != null) {
             preparedStatement.close();
         }
-        if(connection != null){
+        if (connection != null) {
             connection.close();
         }
         super.close();
     }
 
     @Override
-    public void invoke(ZongShu value, Context context) throws Exception {
+    public void invoke(BoxResultModel value, Context context) throws Exception {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        String current = sdf.format(System.currentTimeMillis());
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        String riqi = sdf.format(System.currentTimeMillis());
+        String js_time = sdf1.format(System.currentTimeMillis());
+
         try {
             String room = value.getRoom();
-            double num = value.getNum();
-            preparedStatement.setString(1,current);
-            preparedStatement.setString(2,room);
-            preparedStatement.setInt(3, (int) num);
+            String partitions = value.getPartitions();
+            String box = value.getBox();
+            double allNum = value.getAllNum();
+            double zcNum = value.getZcNum();
+            double wgbgjNum = value.getWgbgjNum();
+            double record = value.getRecord();
+            preparedStatement.setString(1, riqi);
+            preparedStatement.setString(2, room);
+            preparedStatement.setString(3,partitions);
+            preparedStatement.setString(4,box);
+            preparedStatement.setInt(5, (int) allNum);
+            preparedStatement.setInt(6, (int) zcNum);
+            preparedStatement.setInt(7, (int) wgbgjNum);
+            preparedStatement.setDouble(8,record);
+            preparedStatement.setString(9,js_time);
             preparedStatement.executeUpdate();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

@@ -1,6 +1,8 @@
 package com.dtc.java.shucang.JFSBWGBGJ.sink;
 
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
+import com.dtc.java.analytic.V2.common.model.AlterStruct;
+import com.dtc.java.shucang.JFSBWGBGJ.model.RoomResultModel;
 import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -17,13 +19,14 @@ import java.util.Properties;
  * @author :hao.li
  */
 
-public class MysqlSink3 extends RichSinkFunction<ZongShu> {
+public class MysqlSinkRoom extends RichSinkFunction<RoomResultModel> {
     private Properties properties;
     private Connection connection;
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private PreparedStatement preparedStatement;
+    String str;
 
-    public MysqlSink3(Properties prop) {
+    public MysqlSinkRoom(Properties prop) {
         this.properties = prop;
     }
 
@@ -43,8 +46,7 @@ public class MysqlSink3 extends RichSinkFunction<ZongShu> {
         connection = DriverManager.getConnection(mysqlUrl, userName
                 , passWord);//写入mysql数据库
 //        String sql = null;
-
-        String sql = "replace into num3(riqi,room,record) values(?,?,?)";
+        String sql = "replace into jifang(riqi,room,allNum,zcNum,wgbgiNum,record,js_time) values(?,?,?,?,?,?,?)";
         preparedStatement = connection.prepareStatement(sql);
         //insert sql在配置文件中
         super.open(parameters);
@@ -63,15 +65,25 @@ public class MysqlSink3 extends RichSinkFunction<ZongShu> {
     }
 
     @Override
-    public void invoke(ZongShu value, Context context) throws Exception {
+    public void invoke(RoomResultModel value, Context context) throws Exception {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        String current = sdf.format(System.currentTimeMillis());
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        String riqi = sdf.format(System.currentTimeMillis());
+        String js_time = sdf1.format(System.currentTimeMillis());
+
         try {
             String room = value.getRoom();
-            double num = value.getNum();
-            preparedStatement.setString(1, current);
+            double allNum = value.getAllNum();
+            double zcNum = value.getZcNum();
+            double wgbgjNum = value.getWgbgjNum();
+            double record = value.getRecord();
+            preparedStatement.setString(1, riqi);
             preparedStatement.setString(2, room);
-            preparedStatement.setInt(3, (int) num);
+            preparedStatement.setInt(3, (int) allNum);
+            preparedStatement.setInt(4, (int) zcNum);
+            preparedStatement.setInt(5, (int) wgbgjNum);
+            preparedStatement.setDouble(6,record);
+            preparedStatement.setString(7,js_time);
             preparedStatement.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();

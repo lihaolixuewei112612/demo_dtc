@@ -1,11 +1,10 @@
-package com.dtc.java.shucang.JFSBWGBGJ;
+package com.dtc.java.shucang.daping.source;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
-import com.dtc.java.shucang.JGPF.Order;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
@@ -18,10 +17,10 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜正常机器总数
+ * @Description : 各机房各区域各机柜设备总数
  */
 @Slf4j
-public class ReadDataFMZC extends RichSourceFunction<ZongShu> {
+public class DaPingWCLAlarm extends RichSourceFunction<Tuple2<String,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -45,24 +44,21 @@ public class ReadDataFMZC extends RichSourceFunction<ZongShu> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-           String sql =  "select a.room,a.partitions,a.box,count(*) as num from asset a where a.id not in (select distinct asset_id from alarm) group by a.room,a.partitions,a.box having a.room is not null and a.partitions is not null and a.box is not null";
+//            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
+            String sql = "select type_id,count(*) AllNum from alarm b where b.`status`!=2 group by b.type_id";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<ZongShu> ctx) throws Exception {
+    public void run(SourceContext<Tuple2<String,Integer>> ctx) throws Exception {
         Tuple4<String, String, Short, String> test = null;
-        int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                String room = resultSet.getString("room").trim();
-                String partitions = resultSet.getString("partitions").trim();
-                String box = resultSet.getString("box").trim();
-                num = resultSet.getInt("num");
-                ZongShu order = new ZongShu(room,partitions,box,num,2);
-                ctx.collect(order);
+                String type_id = resultSet.getString("type_id");
+                int num = resultSet.getInt("AllNum");
+                ctx.collect(Tuple2.of(type_id,num));
             }
             Thread.sleep(1000 * 6);
         }

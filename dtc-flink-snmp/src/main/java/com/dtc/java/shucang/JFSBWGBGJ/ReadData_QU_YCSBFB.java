@@ -47,7 +47,7 @@
 //        connection = MySQLUtil.getConnection(driver, url, username, password);
 //
 //        if (connection != null) {
-//           String sql =  "select m.room,m.position,m.system,m.num/sum(m.num) as precent from (select a.room,a.position,a.system as system,count(*) as num from asset a where a.id in(select distinct asset_id from alarm) group by a.system,a.room,a.position) m";
+//           String sql =  "select m.room,m.partitions,m.system,m.num/sum(m.num) as precent from (select a.room,a.partitions,a.system as system,count(*) as num from asset a where a.id in(select distinct asset_id from alarm) group by a.system,a.room,a.partitions) m";
 //            ps = connection.prepareStatement(sql);
 //        }
 //    }
@@ -62,14 +62,14 @@
 //            ResultSet resultSet = ps.executeQuery();
 //            while (resultSet.next()) {
 //                String room = resultSet.getString("room");
-//                String position = resultSet.getString("position");
+//                String partitions = resultSet.getString("partitions");
 //                String system = resultSet.getString("system");
 //                id = resultSet.getInt("precent");
-//                fbModel = new ZongShu(room,position,system,id);
+//                fbModel = new ZongShu(room,partitions,system,id);
 //                ctx.collect(fbModel);
 //            }
 //
-//            Thread.sleep(1000*6);
+//            Thread.sleep(1000*60);
 //        }
 //
 //    }

@@ -46,7 +46,7 @@ public class ReadDataQY_WGBGJ extends RichSourceFunction<ZongShu> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-           String sql =  "select a.room,a.position,a.box,count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2) group by a.room,a.position,a.box having a.room is not null and a.position is not null and a.box is not null";
+           String sql =  "select a.room,a.partitions,a.box,count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2) group by a.room,a.partitions,a.box having a.room is not null and a.partitions is not null and a.box is not null";
             ps = connection.prepareStatement(sql);
         }
     }
@@ -59,10 +59,10 @@ public class ReadDataQY_WGBGJ extends RichSourceFunction<ZongShu> {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 String room = resultSet.getString("room").trim();
-                String position = resultSet.getString("position").trim();
+                String partitions = resultSet.getString("partitions").trim();
                 String box = resultSet.getString("box").trim();
                 num = resultSet.getInt("num");
-                ZongShu order = new ZongShu(room,position,box,num,3);
+                ZongShu order = new ZongShu(room,partitions,box,num,3);
                 ctx.collect(order);
             }
             Thread.sleep(1000 * 6);
