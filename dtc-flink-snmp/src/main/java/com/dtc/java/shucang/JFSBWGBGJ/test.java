@@ -1,6 +1,5 @@
 package com.dtc.java.shucang.JFSBWGBGJ;
 
-import com.dtc.java.shucang.JFSBWGBGJ.*;
 import com.dtc.java.shucang.JFSBWGBGJ.model.*;
 import com.dtc.java.shucang.JFSBWGBGJ.sink.MysqlSinkBox;
 import com.dtc.java.shucang.JFSBWGBGJ.sink.MysqlSinkPosition;
@@ -15,6 +14,7 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.util.Collector;
 
 import java.util.Map;
 import java.util.Properties;
@@ -219,6 +219,7 @@ public class test {
                     });
         return apply;
     }
+
     private static DataStream<PositionJoinModel> PositionTestJoin(
             DataStream<ZongShu> grades,
             DataStream<ZongShu> salaries,
@@ -237,6 +238,7 @@ public class test {
                 });
         return apply;
     }
+
     private static DataStream<PositionResultModel> PositionResultTestJoin(
             DataStream<PositionJoinModel> grades,
             DataStream<PositionJoinModel> salaries,
