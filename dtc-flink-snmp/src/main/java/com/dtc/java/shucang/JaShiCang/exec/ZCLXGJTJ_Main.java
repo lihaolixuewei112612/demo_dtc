@@ -1,8 +1,6 @@
 package com.dtc.java.shucang.JaShiCang.exec;
 
 import com.dtc.java.shucang.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.shucang.JaShiCang.source.JSC_AllNum;
-import com.dtc.java.shucang.JaShiCang.source.JSC_ZCAllNum;
 import com.dtc.java.shucang.JaShiCang.source.JSC_ZCGJTJ_ALL;
 import com.dtc.java.shucang.JaShiCang.source.JSC_ZCGJTJ_YC;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +25,9 @@ import java.util.Properties;
 /**
  * @Author : lihao
  * Created on : 2020-03-31
- * @Description : 驾驶舱监控大盘--设备总数/正常设备数/不正常设备数
+ * @Description : 驾驶舱监控大盘--资产类型告警统计
  */
-public class TJFX_Main {
+public class ZCLXGJTJ_Main {
     public static void main(String[] args) throws Exception {
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
         Map<String, String> stringStringMap = parameterTool.toMap();
@@ -43,15 +41,15 @@ public class TJFX_Main {
         int windowSizeMillis = 6000;
         env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
         /**各机房各区域各机柜设备总数*/
-        DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource = env.addSource(new JSC_ZCGJTJ_YC()).setParallelism(1);
-        DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource1 = env.addSource(new JSC_ZCGJTJ_ALL()).setParallelism(1);
-        DataStream<Tuple3<String, Integer, Integer>> tuple3DataStream = YCLB_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
-        tuple3DataStream.map(new MyMapFunctionV3()).print();
+        DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_YC = env.addSource(new JSC_ZCGJTJ_YC()).setParallelism(1);
+        DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_ALL = env.addSource(new JSC_ZCGJTJ_ALL()).setParallelism(1);
+        DataStream<Tuple3<String, Integer, Integer>> tuple3DataStream = ZCLXGJTJ_Result_CGroup(JSC_ZCGJTJ_YC, JSC_ZCGJTJ_ALL, windowSizeMillis);
+        tuple3DataStream.map(new JSC_ZCGJTJ_ALL_MAP()).print();
 
         env.execute("SC sart");
     }
     @Slf4j
-    static class MyMapFunctionV3 implements MapFunction<Tuple3<String, Integer, Integer>, Tuple4<String,Integer, Integer,Double>> {
+    static class JSC_ZCGJTJ_ALL_MAP implements MapFunction<Tuple3<String, Integer, Integer>, Tuple4<String,Integer, Integer,Double>> {
         @Override
         public  Tuple4<String,Integer, Integer,Double> map(Tuple3<String, Integer, Integer> sourceEvent) {
            String name = sourceEvent.f0;
@@ -63,13 +61,13 @@ public class TJFX_Main {
             return Tuple4.of(name,YC_Num,All_Num,v2);
         }
     }
-    private static DataStream<Tuple3<String,Integer,Integer>> YCLB_Result_CGroup(
+    private static DataStream<Tuple3<String,Integer,Integer>> ZCLXGJTJ_Result_CGroup(
             DataStream<Tuple2<String,Integer>> grades,
             DataStream<Tuple2<String,Integer>> salaries,
             long windowSize) {
         DataStream<Tuple3<String,Integer,Integer>> apply = grades.coGroup(salaries)
-                .where(new YCFB_Result_KeySelector())
-                .equalTo(new YCFB_Result_KeySelector())
+                .where(new ZCLXGJTJ_Result_KeySelector())
+                .equalTo(new ZCLXGJTJ_Result_KeySelector())
                 .window(TumblingProcessingTimeWindows.of(Time.milliseconds(windowSize)))
                 .apply(new CoGroupFunction<Tuple2<String,Integer>, Tuple2<String,Integer>,Tuple3<String,Integer,Integer>>() {
                     Tuple3<String,Integer,Integer> tuple3=null;
@@ -89,7 +87,7 @@ public class TJFX_Main {
                 });
         return apply;
     }
-    private static class YCFB_Result_KeySelector implements KeySelector<Tuple2<String,Integer>, String> {
+    private static class ZCLXGJTJ_Result_KeySelector implements KeySelector<Tuple2<String,Integer>, String> {
         @Override
         public String getKey(Tuple2<String,Integer> value) {
             return value.f0;

@@ -18,5 +18,5 @@ public class ModelThree {
     private int level_three;
     private int level_four;
     private int ZN;
-
+    private int flag;
 }

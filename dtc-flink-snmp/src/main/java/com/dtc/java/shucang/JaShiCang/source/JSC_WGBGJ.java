@@ -3,12 +3,14 @@ package com.dtc.java.shucang.JaShiCang.source;
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
+import com.dtc.java.shucang.JFSBWGBGJ.model.ZongShu;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
+import org.apache.flink.table.expressions.In;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,10 +19,10 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜设备总数
+ * @Description : 驾驶舱-监控大盘-未关闭告警数
  */
 @Slf4j
-public class DaPingWCLAlarm extends RichSourceFunction<Tuple2<String,Integer>> {
+public class JSC_WGBGJ extends RichSourceFunction<Tuple2<Integer,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -44,21 +46,19 @@ public class DaPingWCLAlarm extends RichSourceFunction<Tuple2<String,Integer>> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-//            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select type_id,count(*) AllNum from alarm b where b.`status`!=2 group by b.type_id";
+           String sql =  "select count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2)";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Tuple2<String,Integer>> ctx) throws Exception {
+    public void run(SourceContext<Tuple2<Integer,Integer>> ctx) throws Exception {
         Tuple4<String, String, Short, String> test = null;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                String type_id = resultSet.getString("type_id");
-                int num = resultSet.getInt("AllNum");
-                ctx.collect(Tuple2.of(type_id,num));
+                int num = resultSet.getInt("num");
+                ctx.collect(Tuple2.of(1,num));
             }
             Thread.sleep(1000 * 6);
         }

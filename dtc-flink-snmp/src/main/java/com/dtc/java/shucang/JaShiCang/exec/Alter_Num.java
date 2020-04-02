@@ -1,10 +1,6 @@
 package com.dtc.java.shucang.JaShiCang.exec;
 
 import com.dtc.java.shucang.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.shucang.JaShiCang.model.ModelFirst;
-import com.dtc.java.shucang.JaShiCang.model.ModelSecond;
-import com.dtc.java.shucang.JaShiCang.model.ModelThree;
-import com.dtc.java.shucang.JaShiCang.source.JSC_Alarm_level;
 import com.dtc.java.shucang.JaShiCang.source.JSC_AllNum;
 import com.dtc.java.shucang.JaShiCang.source.JSC_ZCAllNum;
 import lombok.extern.slf4j.Slf4j;
@@ -46,12 +42,12 @@ public class Alter_Num {
         /**各机房各区域各机柜设备总数*/
         DataStreamSource<Tuple2<Integer, Integer>> tuple2DataStreamSource = env.addSource(new JSC_AllNum()).setParallelism(1);
         DataStreamSource<Tuple2<Integer, Integer>> tuple2DataStreamSource1 = env.addSource(new JSC_ZCAllNum()).setParallelism(1);
-        DataStream<Tuple2<Integer, Integer>> tuple2DataStream = YCLB_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
-        tuple2DataStream.map(new MyMapFunctionV3()).print();
+        DataStream<Tuple2<Integer, Integer>> tuple2DataStream = JKSB_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
+        tuple2DataStream.map(new JKSB_MyMapFunctionV()).print();
         env.execute("SC sart");
     }
     @Slf4j
-    static class MyMapFunctionV3 implements MapFunction<Tuple2<Integer, Integer>, Tuple3<Integer, Integer,Integer>> {
+    static class JKSB_MyMapFunctionV implements MapFunction<Tuple2<Integer, Integer>, Tuple3<Integer, Integer,Integer>> {
         @Override
         public Tuple3<Integer, Integer,Integer> map(Tuple2<Integer, Integer> sourceEvent) {
             Integer All_Num = sourceEvent.f0;
@@ -61,13 +57,13 @@ public class Alter_Num {
             return Tuple3.of(All_Num,ZC_Num,BZC_Num);
         }
     }
-    private static DataStream<Tuple2<Integer,Integer>> YCLB_Result_CGroup(
+    private static DataStream<Tuple2<Integer,Integer>> JKSB_Result_CGroup(
             DataStream<Tuple2<Integer,Integer>> grades,
             DataStream<Tuple2<Integer,Integer>> salaries,
             long windowSize) {
         DataStream<Tuple2<Integer,Integer>> apply = grades.coGroup(salaries)
-                .where(new YCFB_Result_KeySelectorOne())
-                .equalTo(new YCFB_Result_KeySelector())
+                .where(new JKSB_Result_KeySelectorOne())
+                .equalTo(new JKSB_Result_KeySelector())
                 .window(TumblingProcessingTimeWindows.of(Time.milliseconds(windowSize)))
                 .apply(new CoGroupFunction<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>,Tuple2<Integer,Integer>>() {
                     Tuple2<Integer,Integer> tuple2=null;
@@ -86,13 +82,13 @@ public class Alter_Num {
                 });
         return apply;
     }
-    private static class YCFB_Result_KeySelector implements KeySelector<Tuple2<Integer,Integer>, Integer> {
+    private static class JKSB_Result_KeySelector implements KeySelector<Tuple2<Integer,Integer>, Integer> {
         @Override
         public Integer getKey(Tuple2<Integer,Integer> value) {
             return value.f0;
         }
     }
-    private static class YCFB_Result_KeySelectorOne implements KeySelector<Tuple2<Integer,Integer>, Integer> {
+    private static class JKSB_Result_KeySelectorOne implements KeySelector<Tuple2<Integer,Integer>, Integer> {
         @Override
         public Integer getKey(Tuple2<Integer,Integer> value) {
             return value.f0+1;

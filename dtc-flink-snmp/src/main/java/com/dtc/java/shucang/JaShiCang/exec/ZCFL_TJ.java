@@ -27,7 +27,7 @@ import java.util.Properties;
 /**
  * @Author : lihao
  * Created on : 2020-03-31
- * @Description : 驾驶舱监控大盘--设备总数/正常设备数/不正常设备数
+ * @Description : 驾驶舱监控大盘--资产分类统计
  */
 public class ZCFL_TJ {
     public static void main(String[] args) throws Exception {
@@ -46,14 +46,14 @@ public class ZCFL_TJ {
         DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource = env.addSource(new JSC_ZCGJTJ_ALL()).setParallelism(1);
         DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource1 = env.addSource(new JSC_ZC_Used_Num()).setParallelism(1);
         DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource2 = env.addSource(new JSC_ZCGJTJ_YC_Online()).setParallelism(1);
-        DataStream<Tuple3<String, Integer, Integer>> tuple3DataStream = YCLB_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
-        DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = YCLB_Finally_CGroup(tuple3DataStream, tuple2DataStreamSource2, windowSizeMillis);
-        tuple4DataStream.filter(e->e.f0!=null).map(new MyMapFunctionV4()).print();
+        DataStream<Tuple3<String, Integer, Integer>> tuple3DataStream = ZCFLTJ_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
+        DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = ZCFLTJ_Finally_CGroup(tuple3DataStream, tuple2DataStreamSource2, windowSizeMillis);
+        tuple4DataStream.filter(e->e.f0!=null).map(new ZCFLTJ_MapFunctionV()).print();
 
         env.execute("SC sart");
     }
     @Slf4j
-    static class MyMapFunctionV4 implements MapFunction<Tuple4<String, Integer, Integer, Integer>, Tuple5<String,Integer,Integer, Integer,Double>> {
+    static class ZCFLTJ_MapFunctionV implements MapFunction<Tuple4<String, Integer, Integer, Integer>, Tuple5<String,Integer,Integer, Integer,Double>> {
         @Override
         public  Tuple5<String,Integer,Integer, Integer,Double> map(Tuple4<String, Integer, Integer, Integer> sourceEvent) {
            String name = sourceEvent.f0;
@@ -66,13 +66,13 @@ public class ZCFL_TJ {
             return Tuple5.of(name,All_Num,Used_Num,YC_Num,v2);
         }
     }
-    private static DataStream<Tuple3<String,Integer,Integer>> YCLB_Result_CGroup(
+    private static DataStream<Tuple3<String,Integer,Integer>> ZCFLTJ_Result_CGroup(
             DataStream<Tuple2<String,Integer>> grades,
             DataStream<Tuple2<String,Integer>> salaries,
             long windowSize) {
         DataStream<Tuple3<String,Integer,Integer>> apply = grades.coGroup(salaries)
-                .where(new YCFB_Result_KeySelector2())
-                .equalTo(new YCFB_Result_KeySelector2())
+                .where(new ZCFLTJ_Result_KeySelector2())
+                .equalTo(new ZCFLTJ_Result_KeySelector2())
                 .window(TumblingProcessingTimeWindows.of(Time.milliseconds(windowSize)))
                 .apply(new CoGroupFunction<Tuple2<String,Integer>, Tuple2<String,Integer>,Tuple3<String,Integer,Integer>>() {
                     Tuple3<String,Integer,Integer> tuple3=null;
@@ -92,13 +92,13 @@ public class ZCFL_TJ {
                 });
         return apply;
     }
-    private static DataStream<Tuple4<String,Integer,Integer,Integer>> YCLB_Finally_CGroup(
+    private static DataStream<Tuple4<String,Integer,Integer,Integer>> ZCFLTJ_Finally_CGroup(
             DataStream<Tuple3<String,Integer,Integer>> grades,
             DataStream<Tuple2<String,Integer>> salaries,
             long windowSize) {
         DataStream<Tuple4<String,Integer,Integer,Integer>> apply = grades.coGroup(salaries)
-                .where(new YCFB_Result_KeySelector())
-                .equalTo(new YCFB_Result_KeySelector1())
+                .where(new ZCFLTJ_Result_KeySelector())
+                .equalTo(new ZCFLTJ_Result_KeySelector1())
                 .window(TumblingProcessingTimeWindows.of(Time.milliseconds(windowSize)))
                 .apply(new CoGroupFunction<Tuple3<String,Integer,Integer>, Tuple2<String,Integer>,Tuple4<String,Integer,Integer,Integer>>() {
                     Tuple4<String,Integer,Integer,Integer> tuple4=null;
@@ -118,20 +118,20 @@ public class ZCFL_TJ {
                 });
         return apply;
     }
-    private static class YCFB_Result_KeySelector1 implements KeySelector<Tuple2<String,Integer>, String> {
+    private static class ZCFLTJ_Result_KeySelector1 implements KeySelector<Tuple2<String,Integer>, String> {
         @Override
         public String getKey(Tuple2<String,Integer> value) {
             return value.f0;
         }
     }
 
-    private static class YCFB_Result_KeySelector implements KeySelector<Tuple3<String,Integer,Integer>, String> {
+    private static class ZCFLTJ_Result_KeySelector implements KeySelector<Tuple3<String,Integer,Integer>, String> {
         @Override
         public String getKey(Tuple3<String,Integer,Integer> value) {
             return value.f0;
         }
     }
-    private static class YCFB_Result_KeySelector2 implements KeySelector<Tuple2<String,Integer>, String> {
+    private static class ZCFLTJ_Result_KeySelector2 implements KeySelector<Tuple2<String,Integer>, String> {
         @Override
         public String getKey(Tuple2<String,Integer> value) {
             return value.f0;
