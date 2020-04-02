@@ -33,11 +33,17 @@ public class test {
         int windowSizeMillis = 6000;
         env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
         /**各机房各区域各机柜设备总数*/
+        //大盘今日监控设备数
         DataStreamSource<Integer> zsStream = env.addSource(new DaPingAllNum()).setParallelism(1);
+        //大盘今日告警数
         DataStreamSource<Integer> zsStreamAlarm = env.addSource(new DaPingAlarm()).setParallelism(1);
+        //大盘今日工单
         DataStreamSource<Integer> zsStreamOrder = env.addSource(new DaPingOrder()).setParallelism(1);
+        //变更
         DataStreamSource<Integer> zsStreamBGOrder = env.addSource(new DaPingBianGengOrder()).setParallelism(1);
+        //正常运行
         DataStreamSource<Integer> zsStreamZCNum = env.addSource(new DaPingZCAllNum()).setParallelism(1);
+        //未处理告警数
         DataStreamSource<Tuple2<String,Integer>> DaPingWCLAlarm = env.addSource(new DaPingWCLAlarm()).setParallelism(1);
         DataStreamSource<Tuple2<String,Integer>> DaPingGJFB = env.addSource(new DaPingGJFB()).setParallelism(1);
         DaPingGJFB.print();
