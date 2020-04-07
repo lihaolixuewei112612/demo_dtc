@@ -36,10 +36,20 @@ public class test {
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
 
-//        DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);//数据流定时从数据库中查出来数据
+//        DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new ReadAlarmMessage()).setParallelism(1);//数据流定时从数据库中查出来数据
         DataStreamSource<Tuple7<String, String, String, String, Double, String, String>> tuple7DataStreamSource = env.addSource(new GetAlarmNotify_Test()).setParallelism(1);//数据流定时从数据库中查出来数据
         SingleOutputStreamOperator<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>> process = tuple7DataStreamSource.keyBy(0, 5).timeWindow(Time.milliseconds(windowSizeMillis)).process(new MySqlProcessMapFunction());
-        process.map(new MySQLFunction()).print();
+        SingleOutputStreamOperator<Map<String, String>> map = process.map(new MySQLFunction());
+        map.map(new MapFunction<Map<String, String>, String>() {
+            @Override
+            public String map(Map<String, String> stringStringMap) throws Exception {
+                for(Map.Entry<String,String> str : stringStringMap.entrySet()){
+                    String key = str.getKey();
+                    String value = str.getValue();
+                }
+                return "abc";
+            }
+        });
 //test for get data from MySQL
 //        tuple7DataStreamSource.print();
         env.execute("zhisheng broadcast demo");
@@ -59,6 +69,9 @@ public class test {
                 String code =value.f2;
                 Double level_1=value.f3;
                 Double level_2=value.f4;
+                if(level_1 !=null){
+
+                }
                 Double level_3=value.f5;
                 Double level_4=value.f6;
                 String str = asset_id+":"+code+":"+level_1+"|"+level_2+"|"+level_3+"|"+level_4;

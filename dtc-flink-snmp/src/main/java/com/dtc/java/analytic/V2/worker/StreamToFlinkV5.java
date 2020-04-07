@@ -11,7 +11,7 @@ import com.dtc.java.analytic.V2.process.function.LinuxProcessMapFunction;
 import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
-import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
+import com.dtc.java.analytic.V2.source.mysql.ReadAlarmMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.BroadcastState;
@@ -69,7 +69,7 @@ public class StreamToFlinkV5 {
         int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
         env.getConfig().setGlobalJobParameters(parameterTool);
-        alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);
+        alarmDataStream = env.addSource(new ReadAlarmMessage()).setParallelism(1);
 //        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
         DataStreamSource<SourceEvent> streamSource = KafkaConfigUtil.buildSource(env);
 
