@@ -24,11 +24,8 @@ import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.table.expressions.In;
 import org.apache.flink.util.Collector;
-import scala.Int;
 
-import javax.xml.bind.annotation.W3CDomHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

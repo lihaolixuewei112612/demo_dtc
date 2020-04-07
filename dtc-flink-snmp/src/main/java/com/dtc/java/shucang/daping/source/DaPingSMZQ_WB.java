@@ -17,10 +17,10 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 大屏-监控大盘-告警分布
+ * @Description : 监控大盘-即将维保数
  */
 @Slf4j
-public class DaPingGJFB extends RichSourceFunction<Tuple2<String,Integer>> {
+public class DaPingSMZQ_WB extends RichSourceFunction<Tuple2<Integer,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -45,19 +45,20 @@ public class DaPingGJFB extends RichSourceFunction<Tuple2<String,Integer>> {
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select m.zc_name,count(*) num from (select a.asset_id as a_id,c.`name` as zc_name from asset_category_mapping a left join asset b on a.asset_id=b.id right join asset_category c on c.id = a.asset_category_id and c.parent_id=0) m where m.a_id in (select DISTINCT asset_id from alarm b) GROUP BY m.zc_name ";
+            String sql = "select count(*) as wb_count from asset where now()>=DATE_SUB(maintenance_time,INTERVAL 6 MONTH) and now()<=maintenance_time";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Tuple2<String,Integer>> ctx) throws Exception {
+    public void run(SourceContext<Tuple2<Integer,Integer>> ctx) throws Exception {
+        Tuple4<String, String, Short, String> test = null;
+        int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                String zc_name = resultSet.getString("zc_name");
-                int num = resultSet.getInt("AllNum");
-                ctx.collect(Tuple2.of(zc_name,num));
+                num = resultSet.getInt("wb_count");
+                ctx.collect(Tuple2.of(1,num));
             }
             Thread.sleep(1000 * 6);
         }

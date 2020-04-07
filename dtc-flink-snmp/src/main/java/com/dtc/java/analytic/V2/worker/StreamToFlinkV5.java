@@ -12,16 +12,12 @@ import com.dtc.java.analytic.V2.process.function.WinProcessMapFunction;
 import com.dtc.java.analytic.V2.sink.mysql.MysqlSink;
 import com.dtc.java.analytic.V2.sink.opentsdb.PSinkToOpentsdb;
 import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotifyData;
-import com.dtc.java.analytic.V2.source.mysql.GetAlarmNotify_Test;
-import com.dtc.java.analytic.V2.source.mysql.test;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.java.tuple.Tuple;
-import org.apache.flink.api.java.tuple.Tuple7;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
@@ -36,12 +32,13 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 
@@ -51,12 +48,12 @@ import java.util.concurrent.TimeUnit;
  * @author :ren
  */
 @Slf4j
-public class StreamToFlinkV3 {
+public class StreamToFlinkV5 {
     final static MapStateDescriptor<String, String> ALARM_RULES = new MapStateDescriptor<>(
             "alarm_rules",
             BasicTypeInfo.STRING_TYPE_INFO,
             BasicTypeInfo.STRING_TYPE_INFO);
-    private static  DataStream<Map<String, String>> alarmDataStream = null;
+    private static DataStreamSource<Map<String, String>> alarmDataStream = null;
 
     public static void main(String[] args) throws Exception {
 
@@ -72,10 +69,7 @@ public class StreamToFlinkV3 {
         int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
         env.getConfig().setGlobalJobParameters(parameterTool);
-        DataStreamSource<Tuple7<String, String, String, String, Double, String, String>> tuple7DataStreamSource = env.addSource(new GetAlarmNotify_Test()).setParallelism(1);
-        DataStream<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>> process = tuple7DataStreamSource.keyBy(0, 5).timeWindow(Time.milliseconds(windowSizeMillis)).process(new MySqlProcessMapFunction());
-       alarmDataStream = process.map(new MySQLFunction());
-
+        alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);
 //        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
         DataStreamSource<SourceEvent> streamSource = KafkaConfigUtil.buildSource(env);
 
@@ -120,8 +114,7 @@ public class StreamToFlinkV3 {
 
         //windows数据进行告警规则判断并将告警数据写入mysql
         List<DataStream<AlterStruct>> alarmWindows = getAlarm(winProcess);
-        alarmWindows.forEach(e-> e.print());
-//        alarmWindows.forEach(e -> e.addSink(new MysqlSink(properties)));
+        alarmWindows.forEach(e -> e.addSink(new MysqlSink(properties)));
 
         //linux指标数据处理
         SingleOutputStreamOperator<DataStruct> linuxProcess = splitStream
@@ -130,13 +123,15 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new LinuxProcessMapFunction());
+        linuxProcess.print("111--:");
 
         //Linux数据全量写opentsdb
         linuxProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
 
         //Linux数据进行告警规则判断并将告警数据写入mysql
         List<DataStream<AlterStruct>> alarmLinux = getAlarm(linuxProcess);
-//        alarmLinux.forEach(e -> e.addSink(new MysqlSink(properties)));
+        alarmLinux.forEach(e->e.print("2222---:"));
+        alarmLinux.forEach(e -> e.addSink(new MysqlSink(properties)));
         //告警数据实时发送kafka
         env.execute("Dtc-Alarm-Flink-Process");
     }
@@ -274,65 +269,11 @@ public class StreamToFlinkV3 {
             }
         };
     }
-    static class MySQLFunction implements MapFunction<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>, Map<String, String>> {
-        //(445,10.3.1.6,101_101_106_103,50.0,null,null,null)
-
-        @Override
-        public  Map<String, String> map(Map<String, Tuple7<String, String, String, Double, Double, Double, Double>> event) throws Exception {
-            Map<String,String> map = new HashMap<>();
-            for(Map.Entry<String, Tuple7<String, String, String, Double, Double, Double, Double>> entries:event.entrySet()){
-                Tuple7<String, String, String, Double, Double, Double, Double> value = entries.getValue();
-                String key = entries.getKey();
-                String asset_id=value.f0;
-                String ip =value.f1;
-                String code =value.f2;
-                Double level_1=value.f3;
-                Double level_2=value.f4;
-                Double level_3=value.f5;
-                Double level_4=value.f6;
-                String str = asset_id+":"+code+":"+level_1+"|"+level_2+"|"+level_3+"|"+level_4;
-                map.put(key,str);
-            }
-            return map;
-        }
-    }
-
-    @Slf4j
-    static class MySqlProcessMapFunction extends ProcessWindowFunction<Tuple7<String, String, String, String, Double, String, String>, Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>, Tuple, TimeWindow> {
-        @Override
-        public void process(Tuple tuple, Context context, Iterable<Tuple7<String, String, String, String, Double, String, String>> iterable, Collector<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>> collector) throws Exception {
-            Tuple7<String, String, String, Double, Double, Double, Double> tuple7 = new Tuple7<>();
-            Map<String, Tuple7<String, String, String, Double, Double, Double, Double>> map = new HashMap<>();
-            for (Tuple7<String, String, String, String, Double, String, String> sourceEvent : iterable) {
-                String asset_id = sourceEvent.f0;
-                String ip = sourceEvent.f1;
-                Double num = sourceEvent.f4;
-                String code = sourceEvent.f5;
-                String level = sourceEvent.f6;
-                tuple7.f0 = asset_id;
-                tuple7.f1 = ip;
-                tuple7.f2 = code;
-                String key = ip + "." + code.replace("_",".");
-                if ("1".equals(level)) {
-                    tuple7.f3 = num;
-                } else if ("2".equals(level)) {
-                    tuple7.f4 = num;
-                } else if ("3".equals(level)) {
-                    tuple7.f5 = num;
-                } else if ("4".equals(level)) {
-                    tuple7.f6 = num;
-                }
-                map.put(key, tuple7);
-            }
-            collector.collect(map);
-        }
-
-    }
 }
 
 
 @Slf4j
-class MyMapFunctionV3 implements MapFunction<SourceEvent, DataStruct> {
+class MyMapFunctionV5 implements MapFunction<SourceEvent, DataStruct> {
     @Override
     public DataStruct map(SourceEvent sourceEvent) {
         String[] codes = sourceEvent.getCode().split("_");
@@ -347,4 +288,3 @@ class MyMapFunctionV3 implements MapFunction<SourceEvent, DataStruct> {
         return new DataStruct(systemName, host, zbFourCode, zbLastCode, nameCN, nameEN, time, value);
     }
 }
-

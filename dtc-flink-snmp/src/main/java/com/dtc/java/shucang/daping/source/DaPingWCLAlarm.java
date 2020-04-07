@@ -17,7 +17,7 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜设备总数
+ * @Description : 大屏-监控大盘-未处理告警数
  */
 @Slf4j
 public class DaPingWCLAlarm extends RichSourceFunction<Tuple2<String,Integer>> {

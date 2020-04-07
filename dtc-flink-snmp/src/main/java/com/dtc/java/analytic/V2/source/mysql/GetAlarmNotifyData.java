@@ -45,9 +45,8 @@ public class GetAlarmNotifyData extends RichSourceFunction<Map<String, String>> 
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-            String sql = "select g.*,h.id,h.`name` from (select e.*,f.is_enable,f.alarm_level from (select * from (select a.strategy_id,a.asset_id,b.trigger_name,b.comparator,b.number,b.`code`,\n" +
-                    "c.ipv4 from strategy_asset_mapping a left join strategy_trigger b on a.strategy_id = b.strategy_id left join asset c on c.id = a.asset_id) \n" +
-                    "d where d.ipv4!=\"\" and d.`code`!=\"\") e left join alarm_strategy f on e.strategy_id = f.id) g left join asset_indice h on g.`code`=h.`code`";
+            String sql = "select b.asset_id,e.ipv4,c.strategy_id,c.trigger_kind,c.trigger_name,c.number,c.unit,c.`code`,d.is_enable,d.alarm_level,d.up_time from (select * from strategy_trigger a \n" +
+                    "where a.code!=\"\" and a.comparator='>') c left join strategy_asset_mapping b on c.strategy_id = b. strategy_id left join alarm_strategy d on c.strategy_id = d.id left join asset e on e.id = b.asset_id";
             ps = connection.prepareStatement(sql);
         }
     }

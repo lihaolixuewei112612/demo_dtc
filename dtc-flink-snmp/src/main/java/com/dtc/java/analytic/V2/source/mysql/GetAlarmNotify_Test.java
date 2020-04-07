@@ -1,11 +1,10 @@
-package com.dtc.java.shucang.daping.source;
+package com.dtc.java.analytic.V2.source.mysql;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple4;
+import org.apache.flink.api.java.tuple.Tuple7;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
@@ -15,12 +14,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 /**
- * @Author : lihao
- * Created on : 2020-03-24
- * @Description : 大屏-监控大盘-告警分布
+ * Created on 2019-12-30
+ *
+ * @author :hao.li
  */
 @Slf4j
-public class DaPingGJFB extends RichSourceFunction<Tuple2<String,Integer>> {
+public class GetAlarmNotify_Test extends RichSourceFunction<Tuple7<String, String, String, String, Double, String, String>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -44,20 +43,27 @@ public class DaPingGJFB extends RichSourceFunction<Tuple2<String,Integer>> {
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-//            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select m.zc_name,count(*) num from (select a.asset_id as a_id,c.`name` as zc_name from asset_category_mapping a left join asset b on a.asset_id=b.id right join asset_category c on c.id = a.asset_category_id and c.parent_id=0) m where m.a_id in (select DISTINCT asset_id from alarm b) GROUP BY m.zc_name ";
+            String sql = "select b.asset_id,e.ipv4,c.strategy_id,c.trigger_kind,c.trigger_name,c.number,c.unit,c.`code`,d.is_enable,d.alarm_level,d.up_time from (select * from strategy_trigger a \n" +
+                    "where a.code!=\"\" and a.comparator='>') c left join strategy_asset_mapping b on c.strategy_id = b. strategy_id left join alarm_strategy d on c.strategy_id = d.id left join asset e on e.id = b.asset_id";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Tuple2<String,Integer>> ctx) throws Exception {
+    public void run(SourceContext<Tuple7<String, String, String, String, Double, String, String>> ctx) throws Exception {
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                String zc_name = resultSet.getString("zc_name");
-                int num = resultSet.getInt("AllNum");
-                ctx.collect(Tuple2.of(zc_name,num));
+                if ("1".equals(resultSet.getString("is_enable"))) {
+                    String asset_id = resultSet.getString("asset_id");
+                    String ipv4 = resultSet.getString("ipv4");
+                    String strategy_kind = resultSet.getString("trigger_kind");
+                    String triger_name = resultSet.getString("trigger_name");
+                    double number = resultSet.getDouble("number");
+                    String code = resultSet.getString("code");
+                    String alarm_level = resultSet.getString("alarm_level");
+                    ctx.collect(Tuple7.of(asset_id, ipv4, strategy_kind, triger_name, number, code, alarm_level));
+                }
             }
             Thread.sleep(1000 * 6);
         }

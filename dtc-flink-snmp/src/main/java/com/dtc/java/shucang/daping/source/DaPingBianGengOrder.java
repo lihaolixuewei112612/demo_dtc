@@ -4,6 +4,7 @@ package com.dtc.java.shucang.daping.source;
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
@@ -16,10 +17,10 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 各机房各区域各机柜设备总数
+ * @Description : 数据大盘--今日变更数
  */
 @Slf4j
-public class DaPingBianGengOrder extends RichSourceFunction<Integer> {
+public class DaPingBianGengOrder extends RichSourceFunction<Tuple2<Integer,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -51,14 +52,14 @@ public class DaPingBianGengOrder extends RichSourceFunction<Integer> {
     }
 
     @Override
-    public void run(SourceContext<Integer> ctx) throws Exception {
+    public void run(SourceContext<Tuple2<Integer,Integer>> ctx) throws Exception {
         Tuple4<String, String, Short, String> test = null;
         int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 num = resultSet.getInt("AllNum");
-                ctx.collect(num);
+                ctx.collect(Tuple2.of(1,num));
             }
             Thread.sleep(1000 * 6);
         }
