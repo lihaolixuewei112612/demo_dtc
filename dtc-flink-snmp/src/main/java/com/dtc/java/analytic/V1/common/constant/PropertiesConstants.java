@@ -95,7 +95,7 @@ public class PropertiesConstants {
 
     public static final String DEFAULT_JDBC_URL = "jdbc:mysql://localhost:3306/click_traffic?useUnicode=true&characterEncoding=UTF-8";
 
-    public static final String DEFAULT_DTC_SQL ="select * from test";
+    public static final String DEFAULT_DTC_SQL ="select * from DPComplete";
 
     public static final int DEFAULT_INITIA_SIZE = 10;
 

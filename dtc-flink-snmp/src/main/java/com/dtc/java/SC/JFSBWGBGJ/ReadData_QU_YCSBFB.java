@@ -55,7 +55,7 @@
 //    @Override
 //    public void run(SourceContext<ZongShu> ctx) throws Exception {
 //        Map<String,Integer> map = new HashMap<>();
-//        Tuple4<String, String, Short, String> test = null;
+//        Tuple4<String, String, Short, String> DPComplete = null;
 //        ZongShu fbModel = null;
 //        double id =0;
 //        while (isRunning) {

@@ -50,7 +50,7 @@ public class test {
                 return "abc";
             }
         });
-//test for get data from MySQL
+//DPComplete for get data from MySQL
 //        tuple7DataStreamSource.print();
         env.execute("zhisheng broadcast demo");
     }

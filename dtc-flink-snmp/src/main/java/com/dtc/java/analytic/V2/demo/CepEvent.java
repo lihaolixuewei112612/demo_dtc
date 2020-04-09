@@ -53,7 +53,7 @@ public class CepEvent {
                             @Override
                             public boolean filter(Tuple3<Integer, String, String> s,
                                                   Context<Tuple3<Integer, String, String>> context) throws Exception {
-                                System.out.println("test");
+                                System.out.println("DPComplete");
                                 return s.f2.equalsIgnoreCase("fail");
                             }
                         }).times(3).within(Time.seconds(30));
@@ -73,7 +73,7 @@ public class CepEvent {
 
         alarmStream.print();
 
-        env.execute("cep event test");
+        env.execute("cep event DPComplete");
     }
 }
 

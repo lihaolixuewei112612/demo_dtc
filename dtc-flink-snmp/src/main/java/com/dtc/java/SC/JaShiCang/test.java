@@ -17,7 +17,7 @@
 // * Created on : 2020-03-24
 // * @Description : 数仓监控大盘指标总类
 // */
-//public class test {
+//public class DPComplete {
 //
 //    public static void main(String[] args) throws Exception {
 //

@@ -20,7 +20,7 @@ public class test {
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
 
         DataStreamSource<Map<String, String>> alarmDataStream = env.addSource(new GetAlarmNotifyData()).setParallelism(1);//数据流定时从数据库中查出来数据
-        //test for get data from MySQL
+        //DPComplete for get data from MySQL
         alarmDataStream.print();
         env.execute("zhisheng broadcast demo");
     }

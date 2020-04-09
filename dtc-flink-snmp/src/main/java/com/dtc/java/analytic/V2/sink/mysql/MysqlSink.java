@@ -4,10 +4,12 @@ import com.dtc.java.analytic.V2.common.model.AlterStruct;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.util.Properties;
+import java.util.Random;
 
 /**
  * Created on 2019-09-12
@@ -57,6 +59,7 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
     @Override
     public void invoke(AlterStruct value, Context context) throws Exception {
         try {
+            String s = UUIDGenerator.generateUserCode();
             String system_id = value.getSystem_name();
             String host_ip = value.getHost();
             String itmes_code = value.getZbFourName();
@@ -86,5 +89,37 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
             e.printStackTrace();
         }
     }
+}
+class UUIDGenerator {
+
+    private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final Random rng = new SecureRandom();
+
+    private static char randomChar(){
+        return ALPHABET.charAt(rng.nextInt(ALPHABET.length()));
+    }
+
+    public static String uuid(int length, int spacing, char spacerChar){
+        StringBuilder sb = new StringBuilder();
+        int spacer = 0;
+        while(length > 0){
+            if(spacer == spacing){
+                sb.append(spacerChar);
+                spacer = 0;
+            }
+            length--;
+            spacer++;
+            sb.append(randomChar());
+        }
+        return sb.toString();
+    }
+
+    public static String generateUserCode() {
+        return uuid(6, 10, ' ');
+    }
+
+//    public static void main(String[] args) {
+//        System.out.println(generateUserCode());
+//    }
 }
 
