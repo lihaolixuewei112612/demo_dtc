@@ -1,4 +1,5 @@
 package com.dtc.java.analytic.V2.sink.mysql;
+
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
 import com.dtc.java.analytic.V2.common.model.AlterStruct;
 import org.apache.flink.configuration.Configuration;
@@ -8,6 +9,8 @@ import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Properties;
 import java.util.Random;
 
@@ -22,9 +25,11 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
     private Connection connection;
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private PreparedStatement preparedStatement;
-    public MysqlSink(Properties prop){
+
+    public MysqlSink(Properties prop) {
         this.properties = prop;
     }
+
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
@@ -37,9 +42,9 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
         String port = properties.get(PropertiesConstants.MYSQL_PORT).toString();
         String database = properties.get(PropertiesConstants.MYSQL_DATABASE).toString();
 
-        String mysqlUrl= "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = DriverManager.getConnection(mysqlUrl,userName
-               ,passWord);//写入mysql数据库
+        String mysqlUrl = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
+        connection = DriverManager.getConnection(mysqlUrl, userName
+                , passWord);//写入mysql数据库
         preparedStatement = connection.prepareStatement(properties.get(PropertiesConstants.SQL).toString());//insert sql在配置文件中
         super.open(parameters);
     }
@@ -47,10 +52,10 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
     @Override
     public void close() throws Exception {
         super.close();
-        if(preparedStatement != null){
+        if (preparedStatement != null) {
             preparedStatement.close();
         }
-        if(connection != null){
+        if (connection != null) {
             connection.close();
         }
         super.close();
@@ -59,51 +64,67 @@ public class MysqlSink extends RichSinkFunction<AlterStruct> {
     @Override
     public void invoke(AlterStruct value, Context context) throws Exception {
         try {
-            String s = UUIDGenerator.generateUserCode();
-            String system_id = value.getSystem_name();
-            String host_ip = value.getHost();
-            String itmes_code = value.getZbFourName();
-            String last_code =value.getZbLastCode();
-            String nameCN=value.getNameCN();
-            String nameEN = value.getNameEN();
-            String event_time =value.getEvent_time();
-            String system_time=value.getSystem_time();
+            //code,name,asset_id,indice_val,level_id,description,time_occur,rule)
+            String code = UUIDGenerator.generateUserCode();
+            String code_name = value.getSystem_name();
+            String nameCN = value.getNameCN();
+            String Unique_id = value.getUnique_id();
+            boolean contains = Unique_id.contains("|");
+            String asset_id = null;
+            String index_id = null;
+            if (contains) {
+                String[] split = Unique_id.split("\\|");
+                asset_id = split[0];
+                index_id = split[1];
+            }
             String real_value = value.getValue();
+            String alarm_garde = value.getLevel();
+            String description = code_name + "的" + nameCN + "是" + real_value;
+            String event_time = value.getEvent_time();
             String alarm_threshold = value.getYuzhi();
-            String unique_id = value.getUnique_id();
-            String alarm_garde =value.getLevel();
-            preparedStatement.setString(1,system_id);
-            preparedStatement.setString(2,host_ip);
-            preparedStatement.setString(3,itmes_code);
-            preparedStatement.setString(4,last_code);
-            preparedStatement.setString(5,nameCN);
-            preparedStatement.setString(6,nameEN);
-            preparedStatement.setString(7,event_time);
-            preparedStatement.setString(8,system_time);
-            preparedStatement.setString(9,real_value);
-            preparedStatement.setString(10,alarm_threshold);
-            preparedStatement.setString(11,unique_id);
-            preparedStatement.setString(12,alarm_garde);
+            String rule = nameCN + "是" + real_value + ",而阈值是:" + alarm_threshold;
+            String s = timeStamp2Date(event_time, "");
+            preparedStatement.setString(1, code);
+            preparedStatement.setString(2, nameCN);
+            preparedStatement.setString(3, asset_id);
+            preparedStatement.setString(4, real_value);
+            preparedStatement.setString(5, alarm_garde);
+            preparedStatement.setString(6, description);
+            preparedStatement.setString(7, s);
+            preparedStatement.setString(8, rule);
+            preparedStatement.setString(9, index_id);
             preparedStatement.executeUpdate();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+    public String timeStamp2Date(String seconds, String format) {
+        if (seconds == null || seconds.isEmpty() || seconds.equals("null")) {
+            return "";
+        }
+        if (format == null || format.isEmpty()) {
+            format = "yyyy-MM-dd HH:mm:ss";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        return sdf.format(new Date(Long.valueOf(seconds)));
+    }
 }
+
 class UUIDGenerator {
 
     private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final Random rng = new SecureRandom();
 
-    private static char randomChar(){
+    private static char randomChar() {
         return ALPHABET.charAt(rng.nextInt(ALPHABET.length()));
     }
 
-    public static String uuid(int length, int spacing, char spacerChar){
+    public static String uuid(int length, int spacing, char spacerChar) {
         StringBuilder sb = new StringBuilder();
         int spacer = 0;
-        while(length > 0){
-            if(spacer == spacing){
+        while (length > 0) {
+            if (spacer == spacing) {
                 sb.append(spacerChar);
                 spacer = 0;
             }

@@ -21,6 +21,7 @@ import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple7;
+import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
@@ -71,8 +72,8 @@ public class StreamToFlinkV3 {
         int windowSizeMillis = parameterTool.getInt("dtc.windowSizeMillis", 2000);
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
         env.getConfig().setGlobalJobParameters(parameterTool);
-        DataStreamSource<Tuple7<String, String, String, String, Double, String, String>> tuple7DataStreamSource = env.addSource(new ReadAlarmMessage()).setParallelism(1);
-        DataStream<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>> process = tuple7DataStreamSource.keyBy(0, 5).timeWindow(Time.milliseconds(windowSizeMillis)).process(new MySqlProcessMapFunction());
+        DataStreamSource<Tuple9<String, String, String, String, Double, String, String, String, String>> alarmMessageMysql = env.addSource(new ReadAlarmMessage()).setParallelism(1);
+        DataStream<Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>>> process = alarmMessageMysql.keyBy(0, 5).timeWindow(Time.milliseconds(windowSizeMillis)).process(new MySqlProcessMapFunction());
         alarmDataStream = process.map(new MySQLFunction());
 
 //        DataStreamSource<SourceEvent> streamSource = env.addSource(new TestSourceEvent());
@@ -113,14 +114,12 @@ public class StreamToFlinkV3 {
                 .keyBy("Host")
                 .timeWindow(Time.of(windowSizeMillis, TimeUnit.MILLISECONDS))
                 .process(new WinProcessMapFunction());
-        winProcess.print("widows: ");
         //windows数据全量写opentsdb
         winProcess.addSink(new PSinkToOpentsdb(opentsdb_url));
-        winProcess.print("windows:xie opentsdb");
 
         //windows数据进行告警规则判断并将告警数据写入mysql
         List<DataStream<AlterStruct>> alarmWindows = getAlarm(winProcess);
-        alarmWindows.forEach(e -> e.print());
+        alarmWindows.forEach(e -> e.print("告警收敛之后的数据："));
         alarmWindows.forEach(e -> e.addSink(new MysqlSink(properties)));
 
         //linux指标数据处理
@@ -136,14 +135,14 @@ public class StreamToFlinkV3 {
 
         //Linux数据进行告警规则判断并将告警数据写入mysql
         List<DataStream<AlterStruct>> alarmLinux = getAlarm(linuxProcess);
-//        alarmLinux.forEach(e -> e.addSink(new MysqlSink(properties)));
-        //告警数据实时发送kafka
+        alarmLinux.forEach(e -> e.addSink(new MysqlSink(properties)));
         env.execute("Dtc-Alarm-Flink-Process");
     }
 
     private static List<DataStream<AlterStruct>> getAlarm(SingleOutputStreamOperator<DataStruct> event) {
         SingleOutputStreamOperator<AlterStruct> alert_rule = event.connect(alarmDataStream.broadcast(ALARM_RULES))
                 .process(getAlarmFunction());
+        alert_rule.print("告警数据：");
 
 //        AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipToFirst("begin");
         AfterMatchSkipStrategy skipStrategy = AfterMatchSkipStrategy.skipPastLastEvent();
@@ -169,7 +168,7 @@ public class StreamToFlinkV3 {
                     public boolean filter(AlterStruct s) {
                         return s.getLevel().equals("4");
                     }
-                }).times(4).within(Time.seconds(10));
+                }).times(3).within(Time.seconds(10));
         Pattern<AlterStruct, ?> alarmIncream
                 = Pattern.<AlterStruct>begin("begin", skipStrategy).subtype(AlterStruct.class)
                 .where(new SimpleCondition<AlterStruct>() {
@@ -192,7 +191,7 @@ public class StreamToFlinkV3 {
                     public boolean filter(AlterStruct alterStruct) {
                         return alterStruct.getLevel().equals("4");
                     }
-                }).times(2).within(Time.seconds(16));
+                }).times(2).within(Time.seconds(20));
         PatternStream<AlterStruct> patternStream =
                 CEP.pattern(alert_rule.keyBy(AlterStruct::getGaojing), alarmGrade);
         PatternStream<AlterStruct> alarmIncreamStream =
@@ -233,18 +232,21 @@ public class StreamToFlinkV3 {
                 if (!broadcastState.contains(weiyi)) {
                     return;
                 }
-                //asset_id + ":" + code + ":" + alarm;
-                String targetId = broadcastState.get(weiyi);
+                //asset_id + ":" + code + ":"+ asset_code + ":" +asset_name+":"+ alarm
+                String targetId = broadcastState.get(weiyi).trim();
                 String[] split = targetId.split(":");
-                if (split.length != 3) {
+                if (split.length != 5) {
                     return;
                 }
-                String unique_id = split[0];
-                String r_code = split[1];
+                String unique_id = split[0].trim();
+                String r_code = split[1].trim();
                 if (!r_code.equals(value.getZbFourName())) {
                     return;
                 }
-                String r_value = split[2];
+                String asset_code = split[2].trim();
+                String asset_name = split[3].trim();
+                String result = asset_code+"("+asset_name+")";
+                String r_value = split[4].trim();
                 if (unique_id.isEmpty() || code.isEmpty() || r_value.isEmpty()) {
                     return;
                 }
@@ -252,7 +254,7 @@ public class StreamToFlinkV3 {
                 if (split1.length != 4) {
                     return;
                 }
-                AlarmRule(value, out, unique_id, split1);
+                AlarmRule(value, out, unique_id, split1, result);
             }
 
             @Override
@@ -271,8 +273,9 @@ public class StreamToFlinkV3 {
     /**
      * 告警规则
      */
-    private static void AlarmRule(DataStruct value, Collector<AlterStruct> out, String unique_id, String[] split1) {
+    private static void AlarmRule(DataStruct value, Collector<AlterStruct> out, String unique_id, String[] split1, String str1) {
         double data_value = Double.parseDouble(value.getValue());
+        String code_name = str1;
         String level_1 = split1[0];
         String level_2 = split1[1];
         String level_3 = split1[2];
@@ -285,19 +288,19 @@ public class StreamToFlinkV3 {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_3 || data_value == num_3) && data_value < num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if (data_value > num_4 || data_value == num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         }
@@ -306,28 +309,28 @@ public class StreamToFlinkV3 {
             Double num_1 = Double.parseDouble(split1[0]);
             if ((data_value > num_1 || data_value == num_1)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if ("null".equals(level_1) && !("null".equals(level_2)) && "null".equals(level_3) && "null".equals(level_4)) {
             Double num_2 = Double.parseDouble(split1[1]);
             if ((data_value > num_2 || data_value == num_2)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if ("null".equals(level_1) && "null".equals(level_2) && !("null".equals(level_3)) && "null".equals(level_4)) {
             Double num_3 = Double.parseDouble(split1[2]);
             if ((data_value > num_3 || data_value == num_3)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if ("null".equals(level_1) && "null".equals(level_2) && "null".equals(level_3) && !("null".equals(level_4))) {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_4 || data_value == num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         }
@@ -337,11 +340,11 @@ public class StreamToFlinkV3 {
             Double num_2 = Double.parseDouble(split1[1]);
             if ((data_value > num_1 || data_value == num_1) && (data_value < num_2)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_2 || data_value == num_2)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_1)) && !("null".equals(level_3)) && "null".equals(level_2) && "null".equals(level_4)) {
@@ -349,11 +352,11 @@ public class StreamToFlinkV3 {
             Double num_3 = Double.parseDouble(split1[2]);
             if ((data_value > num_1 || data_value == num_1) && (data_value < num_3)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_3 || data_value == num_3)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_1)) && !("null".equals(level_4)) && "null".equals(level_2) && "null".equals(level_3)) {
@@ -361,11 +364,11 @@ public class StreamToFlinkV3 {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_1 || data_value == num_1) && (data_value < num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_4 || data_value == num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_2)) && !("null".equals(level_3)) && "null".equals(level_1) && "null".equals(level_4)) {
@@ -373,11 +376,11 @@ public class StreamToFlinkV3 {
             Double num_2 = Double.parseDouble(split1[1]);
             if ((data_value > num_2 || data_value == num_2) && (data_value < num_3)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_3 || data_value == num_3)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_2)) && !("null".equals(level_4)) && "null".equals(level_1) && "null".equals(level_3)) {
@@ -385,11 +388,11 @@ public class StreamToFlinkV3 {
             Double num_2 = Double.parseDouble(split1[1]);
             if ((data_value > num_2 || data_value == num_2) && (data_value < num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_4 || data_value == num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_3)) && !("null".equals(level_4)) && "null".equals(level_1) && "null".equals(level_2)) {
@@ -397,11 +400,11 @@ public class StreamToFlinkV3 {
             Double num_3 = Double.parseDouble(split1[2]);
             if ((data_value > num_3 || data_value == num_3) && (data_value < num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_4 || data_value == num_4)) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         }
@@ -412,15 +415,15 @@ public class StreamToFlinkV3 {
             Double num_3 = Double.parseDouble(split1[2]);
             if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if (data_value > num_3 || data_value == num_3) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_1)) && !("null".equals(level_2)) && !("null".equals(level_4)) && "null".equals(level_3)) {
@@ -429,15 +432,15 @@ public class StreamToFlinkV3 {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_1 || data_value == num_1) && data_value < num_2) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_2 || data_value == num_2) && data_value < num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if (data_value > num_4 || data_value == num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_1)) && !("null".equals(level_3)) && !("null".equals(level_4)) && "null".equals(level_2)) {
@@ -446,15 +449,15 @@ public class StreamToFlinkV3 {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_1 || data_value == num_1) && data_value < num_3) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "1", unique_id, String.valueOf(num_1), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_3 || data_value == num_3) && data_value < num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if (data_value > num_4 || data_value == num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         } else if (!("null".equals(level_2)) && !("null".equals(level_3)) && !("null".equals(level_4)) && "null".equals(level_1)) {
@@ -463,28 +466,28 @@ public class StreamToFlinkV3 {
             Double num_4 = Double.parseDouble(split1[3]);
             if ((data_value > num_2 || data_value == num_2) && data_value < num_3) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "2", unique_id, String.valueOf(num_2), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if ((data_value > num_3 || data_value == num_3) && data_value < num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "3", unique_id, String.valueOf(num_3), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             } else if (data_value > num_4 || data_value == num_4) {
                 String system_time = String.valueOf(System.currentTimeMillis());
-                AlterStruct alter_message = new AlterStruct(value.getSystem_name(), value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
+                AlterStruct alter_message = new AlterStruct(code_name, value.getHost(), value.getZbFourName(), value.getZbLastCode(), value.getNameCN(), value.getNameEN(), value.getTime(), system_time, value.getValue(), "4", unique_id, String.valueOf(num_4), value.getHost() + "-" + value.getZbFourName());
                 out.collect(alter_message);
             }
         }
     }
 
-    static class MySQLFunction implements MapFunction<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>, Map<String, String>> {
+    static class MySQLFunction implements MapFunction<Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>>, Map<String, String>> {
         //(445,10.3.1.6,101_101_106_103,50.0,null,null,null)
 
         @Override
-        public Map<String, String> map(Map<String, Tuple7<String, String, String, Double, Double, Double, Double>> event) throws Exception {
+        public Map<String, String> map(Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>> event) throws Exception {
             Map<String, String> map = new HashMap<>();
-            for (Map.Entry<String, Tuple7<String, String, String, Double, Double, Double, Double>> entries : event.entrySet()) {
-                Tuple7<String, String, String, Double, Double, Double, Double> value = entries.getValue();
+            for (Map.Entry<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>> entries : event.entrySet()) {
+                Tuple9<String, String, String, Double, Double, Double, Double, String, String> value = entries.getValue();
                 String key = entries.getKey();
                 String asset_id = value.f0;
                 String ip = value.f1;
@@ -493,7 +496,9 @@ public class StreamToFlinkV3 {
                 Double level_2 = value.f4;
                 Double level_3 = value.f5;
                 Double level_4 = value.f6;
-                String str = asset_id + ":" + code + ":" + level_1 + "|" + level_2 + "|" + level_3 + "|" + level_4;
+                String asset_code = value.f7;
+                String asset_name = value.f8;
+                String str = asset_id + ":" + code + ":" + asset_code + ":" + asset_name + ":" + level_1 + "|" + level_2 + "|" + level_3 + "|" + level_4;
                 map.put(key, str);
             }
             return map;
@@ -501,31 +506,33 @@ public class StreamToFlinkV3 {
     }
 
     @Slf4j
-    static class MySqlProcessMapFunction extends ProcessWindowFunction<Tuple7<String, String, String, String, Double, String, String>, Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>, Tuple, TimeWindow> {
+    static class MySqlProcessMapFunction extends ProcessWindowFunction<Tuple9<String, String, String, String, Double, String, String, String, String>, Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>>, Tuple, TimeWindow> {
         @Override
-        public void process(Tuple tuple, Context context, Iterable<Tuple7<String, String, String, String, Double, String, String>> iterable, Collector<Map<String, Tuple7<String, String, String, Double, Double, Double, Double>>> collector) throws Exception {
-            Tuple7<String, String, String, Double, Double, Double, Double> tuple7 = new Tuple7<>();
-            Map<String, Tuple7<String, String, String, Double, Double, Double, Double>> map = new HashMap<>();
-            for (Tuple7<String, String, String, String, Double, String, String> sourceEvent : iterable) {
+        public void process(Tuple tuple, Context context, Iterable<Tuple9<String, String, String, String, Double, String, String, String, String>> iterable, Collector<Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>>> collector) throws Exception {
+            Tuple9<String, String, String, Double, Double, Double, Double, String, String> tuple9 = new Tuple9<>();
+            Map<String, Tuple9<String, String, String, Double, Double, Double, Double, String, String>> map = new HashMap<>();
+            for (Tuple9<String, String, String, String, Double, String, String, String, String> sourceEvent : iterable) {
                 String asset_id = sourceEvent.f0;
                 String ip = sourceEvent.f1;
                 Double num = sourceEvent.f4;
                 String code = sourceEvent.f5;
                 String level = sourceEvent.f6;
-                tuple7.f0 = asset_id;
-                tuple7.f1 = ip;
-                tuple7.f2 = code;
+                tuple9.f0 = asset_id;
+                tuple9.f1 = ip;
+                tuple9.f2 = code;
                 String key = ip + "." + code.replace("_", ".");
                 if ("1".equals(level)) {
-                    tuple7.f3 = num;
+                    tuple9.f3 = num;
                 } else if ("2".equals(level)) {
-                    tuple7.f4 = num;
+                    tuple9.f4 = num;
                 } else if ("3".equals(level)) {
-                    tuple7.f5 = num;
+                    tuple9.f5 = num;
                 } else if ("4".equals(level)) {
-                    tuple7.f6 = num;
+                    tuple9.f6 = num;
                 }
-                map.put(key, tuple7);
+                tuple9.f7 = sourceEvent.f7;
+                tuple9.f8 = sourceEvent.f8;
+                map.put(key, tuple9);
             }
             collector.collect(map);
         }
