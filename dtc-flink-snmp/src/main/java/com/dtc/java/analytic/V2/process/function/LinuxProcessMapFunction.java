@@ -47,18 +47,17 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
         Map net_packets_recv = new HashMap<String, String>();
 
         for (DataStruct in : elements) {
-
             //判断数据类型是否是数值型
             boolean strResult = in.getValue().matches("-?[0-9]+.*[0-9]*");
             if (!strResult) {
                 log.info("value is not number of string!" + in.getValue());
                 //TODO 若数据不是数值型，可以将数据存到hbse中，例如时间
             } else {
-
                 /**
                  *  主机系统参数：系统启动时间，这一块不会执行。等待处理
                  */
                 if ("101_101_101_106_106".equals(in.getZbFourName())) {
+                    //todo
 //                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
                     continue;
                 }
@@ -123,7 +122,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_packets_sent.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_103_105_000", "000", in.getNameCN(), in.getNameEN(), in.getTime(), result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_103_105_000", "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_packets_sent.clear();
                         continue;
                     }
@@ -139,7 +138,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_packets_recv.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_103_106_000", "000", in.getNameCN(), in.getNameEN(), in.getTime(), result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_103_106_000", "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_packets_recv.clear();
                         continue;
                     }
@@ -155,7 +154,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_err_in.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), result / 1048576 + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_err_in.clear();
                         continue;
                     }
@@ -171,7 +170,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_err_out.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_err_out.clear();
                         continue;
                     }
@@ -187,7 +186,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_drop_in.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_drop_in.clear();
                         continue;
                     }
@@ -203,7 +202,7 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                         for (String key : set) {
                             result += Double.parseDouble(net_drop_out.get(key).toString());
                         }
-                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), result + ""));
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), String.valueOf(result)));
                         net_drop_out.clear();
                         continue;
                     }
@@ -318,69 +317,67 @@ public class LinuxProcessMapFunction extends ProcessWindowFunction<DataStruct, D
                     }
 
                 }
-            }
-            if ("101_101_105_102_102".equals(in.getZbFourName())) {
-                if (swapMap.containsKey("101_101_105_101_101")) {
-                    double swap_total = Double.parseDouble(swapMap.get("101_101_105_101_101").toString());
-                    double swap_used = Double.parseDouble(in.getValue());
-                    //swap总量
-                    String swapTotal_M = df.format(swap_total / 1024d);
-                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_101_101", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapTotal_M));
+                if ("101_101_105_102_102".equals(in.getZbFourName())) {
+                    if (swapMap.containsKey("101_101_105_101_101")) {
+                        double swap_total = Double.parseDouble(swapMap.get("101_101_105_101_101").toString());
+                        double swap_used = Double.parseDouble(in.getValue());
+                        //swap总量
+                        String swapTotal_M = df.format(swap_total / 1024d);
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_101_101", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapTotal_M));
 
-                    //swap使用量
-                    String swapUsed_M = df.format(swap_used / 1024d);
-                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapUsed_M));
+                        //swap使用量
+                        String swapUsed_M = df.format(swap_used / 1024d);
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapUsed_M));
 
-                    //swap空闲
-                    String swapFree_M = df.format((swap_total - swap_used) / 1024d);
-                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_103_103", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapFree_M));
+                        //swap空闲
+                        String swapFree_M = df.format((swap_total - swap_used) / 1024d);
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_103_103", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapFree_M));
 
-                    //swap使用率
-                    String swapRate = df.format((swap_used / swap_total) * 100);
-                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_104_104", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapRate));
+                        //swap使用率
+                        String swapRate = df.format((swap_used / swap_total) * 100);
+                        collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), "101_101_105_104_104", "000", in.getNameCN(), in.getNameEN(), in.getTime(), swapRate));
 
-                    swapMap.remove("101_101_105_101_101");
-                    continue;
-                } else {
-                    swapMap.put("101_101_105_101_101", in.getValue());
+                        swapMap.remove("101_101_105_101_101");
+                        continue;
+                    } else {
+                        swapMap.put("101_101_105_101_101", in.getValue());
+                        continue;
+                    }
+                }
+                /**
+                 * cpu系统使用率/用户使用率
+                 *
+                 * */
+                if ("101_101_106_101_101".equals(in.getZbFourName()) || "101_101_106_102_102".equals(in.getZbFourName())) {
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
                     continue;
                 }
-            }
-            /**
-             * cpu
-             *
-             * */
-            if ("101_101_106_101_101".equals(in.getZbFourName()) || "101_101_106_102_102".equals(in.getZbFourName())) {
-                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
+                //空闲cpu使用率
+                if ("101_101_106_103_103".equals(in.getZbFourName())) {
+                    String result = String.valueOf(in.getValue());
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), result));
+                    continue;
+                }
 
-                continue;
-            }
-            if ("101_101_106_103_103".equals(in.getZbFourName())) {
-                double cpuUsedRate = 100d - Double.parseDouble(in.getValue());
-                String result = String.valueOf(cpuUsedRate);
-                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), result));
-                continue;
-            }
-
-            /**
-             * 主机磁盘
-             */
-            if ("101_101_107_104_104".equals(in.getZbFourName()) || "101_101_107_105_105".equals(in.getZbFourName()) || "101_101_107_106_106".equals(in.getZbFourName())) {
-                String result = Double.parseDouble(in.getValue()) / 1048576 + "";
-                collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), result));
-                continue;
-            }
-            /**
-             * 磁盘使用率
-             * */
-            if ("101_101_107_107_107".equals(in.getZbFourName())) {
+                /**
+                 * 主机磁盘
+                 */
+                if ("101_101_107_104_104".equals(in.getZbFourName()) || "101_101_107_105_105".equals(in.getZbFourName()) || "101_101_107_106_106".equals(in.getZbFourName())) {
+                    String result = Double.parseDouble(in.getValue()) / 1048576 + "";
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), result));
+                    continue;
+                }
+                /**
+                 * 磁盘使用率
+                 * */
+                if ("101_101_107_107_107".equals(in.getZbFourName())) {
+                    collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
+                    continue;
+                }
+                //多余的数据也写出去
                 collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
-                continue;
             }
-            //多余的数据也写出去
-            collector.collect(new DataStruct(in.getSystem_name(), in.getHost(), in.getZbFourName(), in.getZbLastCode(), in.getNameCN(), in.getNameEN(), in.getTime(), in.getValue()));
         }
-
     }
 
 
