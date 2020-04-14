@@ -46,12 +46,12 @@ public class exec {
 
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a group by a.level_id,a.type_id) b \n" +
-                "left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 group by a.level_id,a.type_id ) c on b.level_id= c.level_id) d ";
+//        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a group by a.level_id,a.type_id) b \n" +
+//                "left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 group by a.level_id,a.type_id ) c on b.level_id= c.level_id) d ";
 
-//        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a \n" +
-//                "where TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by a.level_id,a.type_id) b left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 and TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by \n" +
-//                "a.level_id,a.type_id ) c on b.level_id= c.level_id) d";
+        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a \n" +
+                "where TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by a.level_id,a.type_id) b left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 and TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by \n" +
+                "a.level_id,a.type_id ) c on b.level_id= c.level_id) d";
         String insert_sql = "replace into SC_ZHBB_SCRENE_TWO(riqi,level_id,type_id,zs_Num,old_Num,wcl_Num,ycl_Num,js_time) values(?,?,?,?,?,?,?,?)";
         String sql_second = "select level_id,type_id,zs_Num,old_Num,wcl_Num,ycl_Num from SC_ZHBB_SCRENE_TWO where TO_DAYS(now())-TO_DAYS(riqi) =1";
         env.getConfig().setGlobalJobParameters(parameterTool);
@@ -143,9 +143,9 @@ public class exec {
                 if (row1.getField(0) == null && row1.getField(1) == null && row1.getField(3) == null & row1.getField(5) == null) {
                     row1.setField(0, String.valueOf(val.getField(0)));
                     row1.setField(1, String.valueOf(val.getField(1)));
-                    row1.setField(2, String.valueOf(val.getField(2)));
-                    row1.setField(4, String.valueOf(val.getField(4)));
-                    row1.setField(5, String.valueOf(val.getField(5)));
+                    row1.setField(2, String.valueOf(0));
+                    row1.setField(4, String.valueOf(0));
+                    row1.setField(5, String.valueOf(0));
                 }
                 Integer field = (Integer) val.getField(3);
                 abc += field;
