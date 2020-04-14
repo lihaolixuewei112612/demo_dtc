@@ -12,6 +12,7 @@
         <module>dtc-flink-zabbix</module>
         <module>dtc-flink-snmp</module>
         <module>dtc-dist</module>
+        <module>dtc-SC</module>
     </modules>
     <properties>
         <hb.verison>2.0.4</hb.verison>

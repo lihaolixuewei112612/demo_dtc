@@ -41,6 +41,6 @@
 //        DataStreamSource<Tuple2<String,Integer>> DaPingWCLAlarm = env.addSource(new DaPingWCLAlarm()).setParallelism(1);
 //        DataStreamSource<Tuple2<String,Integer>> DaPingGJFB = env.addSource(new DaPingGJFB()).setParallelism(1);
 //        DaPingGJFB.print();
-//        env.execute("SC sart");
+//        env.execute("com.dtc.java.SC sart");
 //    }
 //}

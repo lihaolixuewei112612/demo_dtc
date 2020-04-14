@@ -45,7 +45,7 @@ public class DaPing_ZCGJFL_30 extends RichSourceFunction<Tuple3<String,String,In
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select n.`name`,n.level_id,count(*) from (select * from (select m.zc_name,m.level_id,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name,alarm.level_id from asset_category_mapping a \n" +
+            String sql = "select n.`name`,n.level_id,count(*) as AllNum from (select * from (select m.zc_name,m.level_id,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name,alarm.level_id from asset_category_mapping a \n" +
                     "left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id left join alarm on alarm.asset_id= a.asset_id) m where m.a_id not in (select DISTINCT asset_id \n" +
                     "from alarm b where b.`status`=2 ) GROUP BY m.zc_name,m.level_id having m.level_id!=\"\") x left join asset_category y on x.pd = y.id) n group by n.`name`,n.level_id ";
             ps = connection.prepareStatement(sql);

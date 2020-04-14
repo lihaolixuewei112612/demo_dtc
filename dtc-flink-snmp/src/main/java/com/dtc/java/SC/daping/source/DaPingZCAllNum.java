@@ -45,7 +45,8 @@ public class DaPingZCAllNum extends RichSourceFunction<Tuple2<Integer,Integer>> 
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select count(*) as AllNum from asset a where a.id not in (select distinct asset_id from alarm WHERE TO_DAYS(time_occur) = TO_DAYS(NOW())) and a.room is not null";
+            String sql = "select count(*) as AllNum from asset a where a.id not in (select distinct asset_id from alarm WHERE TO_DAYS(time_occur) = TO_DAYS(NOW()))";
+//            String sql = "select count(*) as AllNum from asset a where a.id not in (select distinct asset_id from alarm WHERE TO_DAYS(time_occur) = TO_DAYS(NOW())) and a.room is not null";
             ps = connection.prepareStatement(sql);
         }
     }

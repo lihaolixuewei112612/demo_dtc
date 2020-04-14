@@ -50,7 +50,7 @@
 //        DataStreamSource<Tuple2<String,Integer>> DaPingWCLAlarm = env.addSource(new JSC_Alarm_level()).setParallelism(1);
 //        DataStream<ModelThree> ycsb_lb_modelSplitStream = getYcsb_lb_modelSplitStream(DaPingWCLAlarm, windowSizeMillis);
 //        ycsb_lb_modelSplitStream.print();
-//        env.execute("SC sart");
+//        env.execute("com.dtc.java.SC sart");
 //    }
 //    private static DataStream<ModelThree> getYcsb_lb_modelSplitStream(DataStreamSource<Tuple2<String,Integer>> sum, long windowSize) {
 //        SplitStream<Tuple2<String,Integer>> split = sum.split((OutputSelector<Tuple2<String,Integer>>) event -> {
