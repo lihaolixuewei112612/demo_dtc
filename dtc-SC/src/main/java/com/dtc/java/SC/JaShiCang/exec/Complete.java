@@ -1,8 +1,8 @@
 package com.dtc.java.SC.JaShiCang.exec;
 
 import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.SC.JaShiCang.gldp.gldp_copy.Lread1;
-import com.dtc.java.SC.JaShiCang.gldp.gldp_copy.Lwrite1;
+import com.dtc.java.SC.JaShiCang.gldp.Lreand;
+import com.dtc.java.SC.JaShiCang.gldp.Lwrite;
 import com.dtc.java.SC.JaShiCang.model.ModelFirst;
 import com.dtc.java.SC.JaShiCang.model.ModelSecond;
 import com.dtc.java.SC.JaShiCang.model.ModelThree;
@@ -70,6 +70,7 @@ public class Complete {
         SingleOutputStreamOperator<Tuple4<String, Integer, Integer, Double>> map = ZCLXGJTJ_Stream.map(new JSC_ZCGJTJ_ALL_MAP());
 //资产分类统计
         DataStreamSource<Tuple2<String, Integer>> JSC_ZC_Used_Num_Stream = env.addSource(new JSC_ZC_Used_Num()).setParallelism(1);
+
         DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_YC_Offline_Stream = env.addSource(new JSC_ZCGJTJ_YC_Offline()).setParallelism(1);
         DataStream<Tuple3<String, Integer, Integer>> JSC_ZCGJTJ_Stream = ZCFLTJ_Result_CGroup(JSC_ZCGJTJ_ALL, JSC_ZC_Used_Num_Stream, windowSizeMillis);
         DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = ZCFLTJ_Finally_CGroup(JSC_ZCGJTJ_Stream, JSC_ZCGJTJ_YC_Offline_Stream, windowSizeMillis);
@@ -79,12 +80,13 @@ public class Complete {
         DataStream<Tuple8<String, Integer, Integer, Double, Integer, Integer, Integer, Double>> tuple8DataStream = YCLB_Finally_CGroup333(map, map1, windowSizeMillis).filter(e -> e.f0 != null).filter(e -> e.f5 != null);
         tuple8DataStream.addSink(new MysqlSinkJSC_YC());
 //厂商设备top告警统计分析
+        //(设备厂商id,厂商名，告警台数，总台数，flag)
        DataStreamSource<Tuple5<String, String, Integer, Integer,Integer>> tuple4DataStreamSource = env.addSource(new JSC_CSSB_TOP_GJTJFX()).setParallelism(1);
         DataStreamSource<Tuple2<Integer,Integer>> tuple4DataStreamSource1 = env.addSource(new JSC_CSSB_TOP_GJTJFX_1()).setParallelism(1);
         DataStream<Tuple5<String, String, Integer, Integer, Integer>> tuple5DataStream = JKSB_Result_Join(tuple4DataStreamSource, tuple4DataStreamSource1, windowSizeMillis);
         SingleOutputStreamOperator<Tuple5<String, String, Integer, Integer, Double>> map2 = tuple5DataStream.filter(e -> e.f0 != null).map(new TOp_CSSB_TOP_GJTJFX_Map());
         map2.addSink(new MysqlSinkJSC_TOP());
-        env.addSource(new Lread1()).addSink(new Lwrite1());
+        env.addSource(new Lreand()).addSink(new Lwrite());
 
         env.execute("com.dtc.java.SC sart");
     }
@@ -446,10 +448,15 @@ public class Complete {
                         for (Tuple2<String, Integer> s : first) {
                             tuple3.f0 = s.f0;
                             tuple3.f1 = s.f1;
-
                         }
                         for (Tuple2<String, Integer> s1 : second) {
                             tuple3.f2 = s1.f1;
+                        }
+                        if(tuple3.f1==null){
+                            tuple3.f1=0;
+                        }
+                        if(tuple3.f2==null){
+                            tuple3.f2=0;
                         }
                         collector.collect(tuple3);
                     }
@@ -502,7 +509,7 @@ public class Complete {
     private static class ZCFLTJ_Result_KeySelector2 implements KeySelector<Tuple2<String, Integer>, String> {
         @Override
         public String getKey(Tuple2<String, Integer> value) {
-            return value.f0;
+            return value.f0.trim();
         }
     }
 
@@ -577,9 +584,13 @@ public class Complete {
             Integer  Num_GJ= sourceEvent.f2;
             Integer Num_ALL = sourceEvent.f3;
             Integer ALL_NUMBER= sourceEvent.f4;
-            double result =Double.parseDouble(String.valueOf(Num_GJ))/Double.parseDouble(String.valueOf(ALL_NUMBER));
-            double v2 = Double.parseDouble(String.format("%.3f", result));
-            return Tuple5.of(id,name,Num_GJ,Num_ALL,v2);
+            if(ALL_NUMBER==0){
+                return Tuple5.of(id,name,Num_GJ,Num_ALL,0d);
+            }else {
+                double result = Double.parseDouble(String.valueOf(Num_GJ)) / Double.parseDouble(String.valueOf(ALL_NUMBER));
+                double v2 = Double.parseDouble(String.format("%.3f", result));
+                return Tuple5.of(id,name,Num_GJ,Num_ALL,v2);
+            }
         }
     }
 

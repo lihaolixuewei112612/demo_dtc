@@ -41,8 +41,9 @@ public class ZCFL_CSSB_TOP_GJTJFX {
         /**各机房各区域各机柜设备总数*/
         DataStreamSource<Tuple5<String, String, Integer, Integer,Integer>> tuple4DataStreamSource = env.addSource(new JSC_CSSB_TOP_GJTJFX()).setParallelism(1);
         DataStreamSource<Tuple2<Integer,Integer>> tuple4DataStreamSource1 = env.addSource(new JSC_CSSB_TOP_GJTJFX_1()).setParallelism(1);
-        DataStream<Tuple5<String, String, Integer, Integer, Integer>> tuple5DataStream = JKSB_Result_Join(tuple4DataStreamSource, tuple4DataStreamSource1, windowSizeMillis);
-        tuple5DataStream.filter(e->e.f0!=null).map(new JSC_CSSB_TOP_GJTJFX_Map()).print();
+        tuple4DataStreamSource1.print();
+//        DataStream<Tuple5<String, String, Integer, Integer, Integer>> tuple5DataStream = JKSB_Result_Join(tuple4DataStreamSource, tuple4DataStreamSource1, windowSizeMillis);
+//        tuple5DataStream.filter(e->e.f0!=null).map(new JSC_CSSB_TOP_GJTJFX_Map()).print();
 
         env.execute("com.dtc.java.SC sart");
     }
