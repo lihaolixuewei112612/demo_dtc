@@ -32,29 +32,19 @@ public class JSC_ZC_Used_Num extends RichSourceFunction<Tuple2<String,Integer>> 
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
 //            String sql = "select count(*) as AllNum from asset a where a.id not in (select distinct asset_id from alarm WHERE TO_DAYS(time_occur) = TO_DAYS(NOW())) and a.room is not null";
-            String sql = "select z.`name`,sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name from asset_category_mapping a \n" +
-                    "left join asset b on a.asset_id=b.id and b.`status`=0 left join asset_category c on c.id = a.asset_category_id) m GROUP BY m.zc_name) x left join asset_category y on x.pd = y.id) z group by z.`name`";
+            String sql = "select ifnull(z.`name`,'其他'),sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name,b.`status` from asset_category_mapping a \n" +
+                    "left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id where b.`status`='0') m GROUP BY m.zc_name) x left join asset_category y on x.pd = y.id) z group by z.`name`";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
     public void run(SourceContext<Tuple2<String,Integer>> ctx) throws Exception {
-        Tuple4<String, String, Short, String> test = null;
         int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();

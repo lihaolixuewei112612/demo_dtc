@@ -31,20 +31,10 @@ public class JSC_AllNum extends RichSourceFunction<Tuple2<Integer,Integer>> {
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
-//            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select count(*) as AllNum from asset a where a.room is not null";
+            String sql = "select count(*) as AllNum from asset a";
             ps = connection.prepareStatement(sql);
         }
     }

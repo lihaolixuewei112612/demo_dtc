@@ -3,6 +3,7 @@ package com.dtc.java.SC.JaShiCang.sink;
 import com.dtc.java.SC.common.MySQLUtil;
 import com.dtc.java.SC.common.PropertiesConstants;
 import org.apache.flink.api.java.tuple.Tuple8;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
@@ -19,36 +20,16 @@ import java.util.Properties;
  */
 
 public class MysqlSinkJSC_YC extends RichSinkFunction<Tuple8<String, Integer, Integer, Double, Integer, Integer, Integer, Double>> {
-    private Properties properties;
     private Connection connection;
-    static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private PreparedStatement preparedStatement;
-    String str;
-
-    public MysqlSinkJSC_YC(Properties prop) {
-        this.properties = prop;
-    }
-
+    private ParameterTool parameterTool;
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
-        // 加载JDBC驱动
-        Class.forName(JDBC_DRIVER);
-        // 获取数据库连接
-        String userName = properties.get(PropertiesConstants.MYSQL_USERNAME).toString();
-        String passWord = properties.get(PropertiesConstants.MYSQL_PASSWORD).toString();
-        String host = properties.get(PropertiesConstants.MYSQL_HOST).toString();
-        String port = properties.get(PropertiesConstants.MYSQL_PORT).toString();
-        String database = properties.get(PropertiesConstants.MYSQL_DATABASE).toString();
-
-        String mysqlUrl = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = DriverManager.getConnection(mysqlUrl, userName
-                , passWord);//写入mysql数据库
-//        String sql = null;
+        parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        connection = MySQLUtil.getConnection(parameterTool);
         String sql = "replace into SC_JSC_JKDP_SBFL(riqi,sb_name,yc_num,sb_all_num,sb_alarm_rato,sb_num_all,sb_num_used,sb_yc_num,sb_yc_rato,js_time) values(?,?,?,?,?,?,?,?,?,?)";
         preparedStatement = connection.prepareStatement(sql);
-        //insert sql在配置文件中
-        super.open(parameters);
     }
 
     @Override
@@ -65,8 +46,8 @@ public class MysqlSinkJSC_YC extends RichSinkFunction<Tuple8<String, Integer, In
 
     @Override
     public void invoke(Tuple8<String, Integer, Integer, Double, Integer, Integer, Integer, Double> value, Context context) throws Exception {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String riqi = sdf.format(System.currentTimeMillis());
         String js_time = sdf1.format(System.currentTimeMillis());
 

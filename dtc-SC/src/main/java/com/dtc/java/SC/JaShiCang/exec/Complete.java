@@ -1,6 +1,8 @@
 package com.dtc.java.SC.JaShiCang.exec;
 
 import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
+import com.dtc.java.SC.JaShiCang.gldp.gldp_copy.Lread1;
+import com.dtc.java.SC.JaShiCang.gldp.gldp_copy.Lwrite1;
 import com.dtc.java.SC.JaShiCang.model.ModelFirst;
 import com.dtc.java.SC.JaShiCang.model.ModelSecond;
 import com.dtc.java.SC.JaShiCang.model.ModelThree;
@@ -28,8 +30,6 @@ import org.apache.flink.util.Collector;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * @Author : lihao
@@ -40,18 +40,13 @@ public class Complete {
     public static void main(String[] args) throws Exception {
 
         final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
-        Map<String, String> stringStringMap = parameterTool.toMap();
-        Properties properties = new Properties();
-        for (String key : stringStringMap.keySet()) {
-            if (key.startsWith("mysql")) {
-                properties.setProperty(key, stringStringMap.get(key));
-            }
-        }
         StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
         int windowSizeMillis = 6000;
         env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+        env.getConfig().setGlobalJobParameters(parameterTool);
         //今日告警
         DataStreamSource<Tuple2<String, Integer>> DaPingWCLAlarm = env.addSource(new JSC_Alarm_level()).setParallelism(1);
+        //(等级1数，等级2数，等级3数，等级4数，总数，flag)
         DataStream<ModelThree> ycsb_lb_modelSplitStream = getYcsb_lb_modelSplitStream(DaPingWCLAlarm, windowSizeMillis);
         //未关闭告警
         DataStreamSource<Tuple2<Integer, Integer>> integerDataStreamSource = env.addSource(new JSC_WGBGJ()).setParallelism(1);
@@ -65,8 +60,7 @@ public class Complete {
         SingleOutputStreamOperator<Tuple4<Integer, Integer, Integer, Integer>> JKSB_Map = tuple2DataStream.map(new JKSB_MyMapFunctionV());
         //（一般，严重，较严重，灾难，总告警数，未关闭告警,总设备数，正常，异常）写入msyql中
         DataStream<Tuple9<Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer>> tuple9DataStream = YCLB_Finally_CGroup222(tuple6DataStream, JKSB_Map, windowSizeMillis).filter(e -> e.f0 != null);
-        tuple9DataStream.addSink(new MysqlSinkJSC(properties));
-
+        tuple9DataStream.addSink(new MysqlSinkJSC());
 
         //资产类型告警统计
         DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_YC = env.addSource(new JSC_ZCGJTJ_YC()).setParallelism(1);
@@ -75,22 +69,22 @@ public class Complete {
         //（名称，异常数，总数，比值）
         SingleOutputStreamOperator<Tuple4<String, Integer, Integer, Double>> map = ZCLXGJTJ_Stream.map(new JSC_ZCGJTJ_ALL_MAP());
 //资产分类统计
-        DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_ALL_Stream = env.addSource(new JSC_ZCGJTJ_ALL()).setParallelism(1);
         DataStreamSource<Tuple2<String, Integer>> JSC_ZC_Used_Num_Stream = env.addSource(new JSC_ZC_Used_Num()).setParallelism(1);
-        DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_YC_Online_Stream = env.addSource(new JSC_ZCGJTJ_YC_Online()).setParallelism(1);
-        DataStream<Tuple3<String, Integer, Integer>> JSC_ZCGJTJ_Stream = ZCFLTJ_Result_CGroup(JSC_ZCGJTJ_ALL_Stream, JSC_ZC_Used_Num_Stream, windowSizeMillis);
-        DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = ZCFLTJ_Finally_CGroup(JSC_ZCGJTJ_Stream, JSC_ZCGJTJ_YC_Online_Stream, windowSizeMillis);
+        DataStreamSource<Tuple2<String, Integer>> JSC_ZCGJTJ_YC_Offline_Stream = env.addSource(new JSC_ZCGJTJ_YC_Offline()).setParallelism(1);
+        DataStream<Tuple3<String, Integer, Integer>> JSC_ZCGJTJ_Stream = ZCFLTJ_Result_CGroup(JSC_ZCGJTJ_ALL, JSC_ZC_Used_Num_Stream, windowSizeMillis);
+        DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = ZCFLTJ_Finally_CGroup(JSC_ZCGJTJ_Stream, JSC_ZCGJTJ_YC_Offline_Stream, windowSizeMillis);
         //（名称，异常数，总数，比值）
         //（名称，总数，已使用，异常数据，异常比）
         SingleOutputStreamOperator<Tuple5<String, Integer, Integer, Integer, Double>> map1 = tuple4DataStream.filter(e -> e.f0 != null).map(new ZCFLTJ_MapFunctionV());
         DataStream<Tuple8<String, Integer, Integer, Double, Integer, Integer, Integer, Double>> tuple8DataStream = YCLB_Finally_CGroup333(map, map1, windowSizeMillis).filter(e -> e.f0 != null).filter(e -> e.f5 != null);
-        tuple8DataStream.addSink(new MysqlSinkJSC_YC(properties));
+        tuple8DataStream.addSink(new MysqlSinkJSC_YC());
 //厂商设备top告警统计分析
        DataStreamSource<Tuple5<String, String, Integer, Integer,Integer>> tuple4DataStreamSource = env.addSource(new JSC_CSSB_TOP_GJTJFX()).setParallelism(1);
         DataStreamSource<Tuple2<Integer,Integer>> tuple4DataStreamSource1 = env.addSource(new JSC_CSSB_TOP_GJTJFX_1()).setParallelism(1);
         DataStream<Tuple5<String, String, Integer, Integer, Integer>> tuple5DataStream = JKSB_Result_Join(tuple4DataStreamSource, tuple4DataStreamSource1, windowSizeMillis);
         SingleOutputStreamOperator<Tuple5<String, String, Integer, Integer, Double>> map2 = tuple5DataStream.filter(e -> e.f0 != null).map(new TOp_CSSB_TOP_GJTJFX_Map());
-        map2.addSink(new MysqlSinkJSC_TOP(properties));
+        map2.addSink(new MysqlSinkJSC_TOP());
+        env.addSource(new Lread1()).addSink(new Lwrite1());
 
         env.execute("com.dtc.java.SC sart");
     }

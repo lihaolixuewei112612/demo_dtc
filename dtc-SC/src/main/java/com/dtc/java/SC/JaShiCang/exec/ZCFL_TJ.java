@@ -2,7 +2,7 @@ package com.dtc.java.SC.JaShiCang.exec;
 
 import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
 import com.dtc.java.SC.JaShiCang.source.JSC_ZCGJTJ_ALL;
-import com.dtc.java.SC.JaShiCang.source.JSC_ZCGJTJ_YC_Online;
+import com.dtc.java.SC.JaShiCang.source.JSC_ZCGJTJ_YC_Offline;
 import com.dtc.java.SC.JaShiCang.source.JSC_ZC_Used_Num;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.CoGroupFunction;
@@ -45,7 +45,7 @@ public class ZCFL_TJ {
         /**各机房各区域各机柜设备总数*/
         DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource = env.addSource(new JSC_ZCGJTJ_ALL()).setParallelism(1);
         DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource1 = env.addSource(new JSC_ZC_Used_Num()).setParallelism(1);
-        DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource2 = env.addSource(new JSC_ZCGJTJ_YC_Online()).setParallelism(1);
+        DataStreamSource<Tuple2<String, Integer>> tuple2DataStreamSource2 = env.addSource(new JSC_ZCGJTJ_YC_Offline()).setParallelism(1);
         DataStream<Tuple3<String, Integer, Integer>> tuple3DataStream = ZCFLTJ_Result_CGroup(tuple2DataStreamSource, tuple2DataStreamSource1, windowSizeMillis);
         DataStream<Tuple4<String, Integer, Integer, Integer>> tuple4DataStream = ZCFLTJ_Finally_CGroup(tuple3DataStream, tuple2DataStreamSource2, windowSizeMillis);
         tuple4DataStream.filter(e->e.f0!=null).map(new ZCFLTJ_MapFunctionV()).print();

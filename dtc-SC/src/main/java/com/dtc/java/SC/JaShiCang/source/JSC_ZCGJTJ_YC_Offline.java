@@ -18,7 +18,7 @@ import java.sql.ResultSet;
  * @Description : 驾驶舱监控大盘--资产类型告警统计
  */
 @Slf4j
-public class JSC_ZCGJTJ_YC_Online extends RichSourceFunction<Tuple2<String,Integer>> {
+public class JSC_ZCGJTJ_YC_Offline extends RichSourceFunction<Tuple2<String,Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -30,22 +30,12 @@ public class JSC_ZCGJTJ_YC_Online extends RichSourceFunction<Tuple2<String,Integ
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select z.`name`,sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name from asset_category_mapping a \n" +
-                    "left join asset b on a.asset_id=b.id and b.`status`=0 left join asset_category c on c.id = a.asset_category_id) m where m.a_id not in (select DISTINCT asset_id \n" +
-                    "from alarm b where b.`status`=2) GROUP BY m.zc_name) x left join asset_category y on x.pd = y.id) z group by z.`name`";
+            String sql = "select ifnull(z.`name`,'其他'),sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name,b.`status` from asset_category_mapping a \n" +
+                    "left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id where b.`status`='2') m GROUP BY m.zc_name) x left join asset_category y on x.pd = y.id) z group by z.`name`\n";
             ps = connection.prepareStatement(sql);
         }
     }

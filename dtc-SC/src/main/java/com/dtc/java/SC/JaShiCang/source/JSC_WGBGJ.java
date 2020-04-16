@@ -20,7 +20,7 @@ import java.sql.ResultSet;
  * @Description : 驾驶舱-监控大盘-未关闭告警数
  */
 @Slf4j
-public class JSC_WGBGJ extends RichSourceFunction<Tuple2<Integer,Integer>> {
+public class JSC_WGBGJ extends RichSourceFunction<Tuple2<Integer, Integer>> {
 
     private Connection connection = null;
     private PreparedStatement ps = null;
@@ -32,31 +32,21 @@ public class JSC_WGBGJ extends RichSourceFunction<Tuple2<Integer,Integer>> {
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
-           String sql =  "select count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2)";
+            String sql = "select count(*) as num from asset a where a.id not in (select distinct asset_id from alarm b where b.`status`=2 and TO_DAYS(b.time_occur) = TO_DAYS(NOW()))";
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
-    public void run(SourceContext<Tuple2<Integer,Integer>> ctx) throws Exception {
-        Tuple4<String, String, Short, String> test = null;
+    public void run(SourceContext<Tuple2<Integer, Integer>> ctx) throws Exception {
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
                 int num = resultSet.getInt("num");
-                ctx.collect(Tuple2.of(1,num));
+                ctx.collect(Tuple2.of(1, num));
             }
             Thread.sleep(1000 * 6);
         }

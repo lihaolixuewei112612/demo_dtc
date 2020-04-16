@@ -1,59 +1,66 @@
 package com.dtc.java.SC.JaShiCang.gldp;
 
+import com.dtc.java.SC.common.MySQLUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.text.SimpleDateFormat;
+
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 /*
 * 驾驶舱管理大盘 source
 *
 * */
+@Slf4j
 public class Lreand extends RichSourceFunction<Map<String, String>> {
-    private static final Logger logger = LoggerFactory.getLogger(Lreand.class);
-
-    private static final String MYSQL_URL = "jdbc:mysql://10.3.7.231:3306/dtc_platform";//参数参考MySql连接数据库常用参数及代码示例
-    private static final String MYSQL_NAME = "root";//数据库用户名
-    private static final String MYSQL_PSD = "DTCserver2019!";//数据库密码
-    private static final String MYSQL_DRIVER_NAME = "com.mysql.jdbc.Driver";//连接MySql数据库
+    private volatile boolean isRunning = true;
+    private ParameterTool parameterTool;
+    private static Connection connection = null;
 
     @Override
     public void run(SourceContext<Map<String, String>> sourceContext) throws Exception {
+        parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        connection = MySQLUtil.getConnection(parameterTool);
         HashMap<String, String> map = new HashMap<String, String>();
-        map.put("wclgd", selectA().get("wclgd"));
-        map.put("jrpd", selectA().get("jrpd"));
-        map.put("jrdk", selectA().get("jrdk"));
-        map.put("zjbcs", selectA().get("zjbcs"));
-        map.put("zjbrs", selectA().get("zjbrs"));
-        map.put("jrjbcs", selectA().get("jrjbcs"));
-        map.put("jrwjb", selectA().get("jrwjb"));
-        map.put("yjbcs", selectA().get("yjbcs"));
-        map.put("gjgd", selectA().get("gjgd"));
-        map.put("tbgjgd", selectA().get("tbgjgd"));
-        map.put("swgd", selectA().get("swgd"));
-        map.put("tbswgd", selectA().get("tbswgd"));
-        map.put("zrs", selectA().get("zrs"));
+        while(isRunning) {
+            map.put("wclgd", selectA().get("wclgd"));
+            map.put("jrpd", selectA().get("jrpd"));
+            map.put("jrdk", selectA().get("jrdk"));
+            map.put("zjbcs", selectA().get("zjbcs"));
+            map.put("zjbrs", selectA().get("zjbrs"));
+            map.put("jrjbcs", selectA().get("jrjbcs"));
+            map.put("jrwjb", selectA().get("jrwjb"));
+            map.put("yjbcs", selectA().get("yjbcs"));
+            map.put("gjgd", selectA().get("gjgd"));
+            map.put("tbgjgd", selectA().get("tbgjgd"));
+            map.put("swgd", selectA().get("swgd"));
+            map.put("tbswgd", selectA().get("tbswgd"));
+            map.put("zrs", selectA().get("zrs"));
 
 
-        map.put("js", selectB().get("js"));
-        map.put("gname", selectB().get("gname"));
-        map.put("wcgd", selectB().get("wcgd"));
-        map.put("gjsl", selectB().get("gjsl"));
+            map.put("js", selectA().get("js"));
+            map.put("jsmm", selectA().get("jsmm"));
+            map.put("gname", selectB().get("gname"));
+            map.put("wcgd", selectB().get("wcgd"));
+            map.put("gjsl", selectB().get("gjsl"));
 
-        map.put("sjgd", selectC().get("sjgd"));
-        map.put("bgsx", selectC().get("bgsx"));
-        map.put("fwgd", selectC().get("fwgd"));
-        map.put("gjgd", selectC().get("gjgd"));
-        map.put("zysq", selectC().get("zysq"));
-        map.put("wpgd", selectC().get("wpgd"));
-        map.put("qt", selectC().get("qt"));
-
-        sourceContext.collect(map);
+            map.put("sjgd", selectC().get("sjgd"));
+            map.put("bgsx", selectC().get("bgsx"));
+            map.put("fwgd", selectC().get("fwgd"));
+            map.put("gjgd", selectC().get("gjgd"));
+            map.put("zysq", selectC().get("zysq"));
+            map.put("wpgd", selectC().get("wpgd"));
+            map.put("qt", selectC().get("qt"));
+            sourceContext.collect(map);
+            map.clear();
+            Thread.sleep(1000 * 6);
+        }
 
     }
 
@@ -63,10 +70,13 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
     }
 
     private static Map<String, String> selectA() {
+        PreparedStatement ps = null;
         Map<String, String> map = new HashMap<String, String>();
         String time = String.valueOf(System.currentTimeMillis());
         String jisuan_riqi2 = timeStamp2Date(time, "yyyy-MM-dd ");
+        String jisuan_riqi1 = timeStamp2Date(time, "yyyy-MM-dd HH:mm:ss");
         map.put("js", jisuan_riqi2);
+        map.put("jsmm", jisuan_riqi1);
         Connection con = null;
         try {
             String sql = "SELECT\n" +
@@ -97,12 +107,9 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
                     "(SELECT count(NAME) AS gjgd FROM work_order WHERE DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(create_time)AND work_order.type='1')AS swgd,\n" +
                     "(SELECT count(NAME) AS gjgd FROM work_order WHERE DATE_SUB(CURDATE(), INTERVAL 14 DAY) <= date(create_time)AND work_order.type='1')AS tswgd\n" +
                     ") as T";//数据库操作语句（查询）
-            Class.forName(MYSQL_DRIVER_NAME);//向DriverManager注册自己
-            con = DriverManager.getConnection(MYSQL_URL, MYSQL_NAME, MYSQL_PSD);//与数据库建立连接
-            Statement statement = con.createStatement();
-            ResultSet rsq = statement.executeQuery(sql);
+            ps = connection.prepareStatement(sql);
+            ResultSet rsq = ps.executeQuery();
             while (rsq.next()) {
-                logger.error("readJDBC name:{}");
                 map.put("wclgd", rsq.getString("wclgd"));
                 map.put("jrpd", rsq.getString("jrpd"));
                 map.put("jrdk", rsq.getString("jrdk"));
@@ -117,8 +124,6 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
                 map.put("tbswgd", rsq.getString("tbswgd"));
                 map.put("zrs", rsq.getString("zrs"));
             }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -126,6 +131,7 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
     }
 
     private static Map<String, String> selectB() {
+        PreparedStatement ps = null;
         Map<String, String> map = new HashMap<String, String>();
         Connection con = null;
         try {
@@ -135,18 +141,13 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
                     "WHERE DATE_SUB(CURDATE(), INTERVAL 15 MINUTE) <= date(a.handle_finish_time)) AS tew\n" +
                     "LEFT JOIN work_order wg ON tew.cod=wg.code\n" +
                     "GROUP BY name\n";//数据库操作语句（查询）
-            Class.forName(MYSQL_DRIVER_NAME);//向DriverManager注册自己
-            con = DriverManager.getConnection(MYSQL_URL, MYSQL_NAME, MYSQL_PSD);//与数据库建立连接
-            Statement statement = con.createStatement();
-            ResultSet rsq = statement.executeQuery(sql);
+            ps = connection.prepareStatement(sql);
+            ResultSet rsq = ps.executeQuery();
             while (rsq.next()) {
-                logger.error("readJDBC name:{}");
                 map.put("gname", rsq.getString("gname"));
                 map.put("wcgd", rsq.getString("wcgd"));
                 map.put("gjsl", rsq.getString("gjsl"));
             }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -154,6 +155,7 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
     }
 
     private static Map<String, String> selectC() {
+        PreparedStatement ps = null;
         Map<String, String> map = new HashMap<String, String>();
         Connection con = null;
         try {
@@ -176,10 +178,8 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
                     "(SELECT COUNT(*)AS numb FROM work_order a  WHERE a.type='7' GROUP BY a.type)AS qt,\n" +
                     "(SELECT COUNT(*)AS numb FROM work_order a  )AS zs\n" +
                     ") as T\n";//数据库操作语句（查询）
-            Class.forName(MYSQL_DRIVER_NAME);//向DriverManager注册自己
-            con = DriverManager.getConnection(MYSQL_URL, MYSQL_NAME, MYSQL_PSD);//与数据库建立连接
-            Statement statement = con.createStatement();
-            ResultSet rsq = statement.executeQuery(sql);
+            ps = connection.prepareStatement(sql);
+            ResultSet rsq = ps.executeQuery();
             while (rsq.next()) {
                 map.put("sjgd", rsq.getString("sjgd"));
                 map.put("bgsx", rsq.getString("bgsx"));
@@ -189,8 +189,6 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
                 map.put("wpgd", rsq.getString("wpgd"));
                 map.put("qt", rsq.getString("qt"));
             }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
         }

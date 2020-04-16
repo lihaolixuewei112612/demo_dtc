@@ -1,29 +1,23 @@
 package com.dtc.java.SC.wdzl;
 
+import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
+import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.List;
+import java.util.Map;
 
-public class JMain {
+public class JMainV3 {
 
-    public static void main(String[] args) {
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-                System.out.println("timer线程执行中......");
-                try {
-                    env.addSource(new WdzlSource()).addSink(new WdzlSink());
-                    env.execute("cai");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(task, 1000, 5000);
-
+    public static void main(String[] args) throws Exception {
+        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
+        StreamExecutionEnvironment env = ExecutionEnvUtil.prepare(parameterTool);
+        env.getConfig().setGlobalJobParameters(parameterTool);
+        DataStreamSource<Map<String, List>> mapDataStreamSource = env.addSource(new WdzlSourceV3());
+        mapDataStreamSource.print();
+        mapDataStreamSource.addSink(new WdzlSinkV3());
+        env.execute("cai");
 
     }
 }

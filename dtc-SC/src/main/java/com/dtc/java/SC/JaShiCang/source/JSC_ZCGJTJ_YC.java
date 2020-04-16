@@ -14,7 +14,7 @@ import java.sql.ResultSet;
 /**
  * @Author : lihao
  * Created on : 2020-03-24
- * @Description : 驾驶舱监控大盘--资产类型告警统计
+ * @Description : 驾驶舱监控大盘--资产类型告警统计--异常资产总数
  */
 @Slf4j
 public class JSC_ZCGJTJ_YC extends RichSourceFunction<Tuple2<String,Integer>> {
@@ -29,20 +29,11 @@ public class JSC_ZCGJTJ_YC extends RichSourceFunction<Tuple2<String,Integer>> {
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
 //            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select z.`name`,sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name from asset_category_mapping a \n" +
+            String sql = "select ifnull(z.`name`,'其他') as `name`,sum(num) as num from (select * from (select m.zc_name,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name from asset_category_mapping a \n" +
                     "left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id) m where m.a_id not in (select DISTINCT asset_id \n" +
                     "from alarm b where b.`status`=2) GROUP BY m.zc_name) x left join asset_category y on x.pd = y.id) z group by z.`name`";
             ps = connection.prepareStatement(sql);
