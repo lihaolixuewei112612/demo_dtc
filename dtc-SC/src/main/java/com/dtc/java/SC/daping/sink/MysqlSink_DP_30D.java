@@ -3,6 +3,7 @@ package com.dtc.java.SC.daping.sink;
 import com.dtc.java.SC.common.MySQLUtil;
 import com.dtc.java.SC.common.PropertiesConstants;
 import org.apache.flink.api.java.tuple.Tuple11;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
@@ -18,7 +19,7 @@ import java.util.Properties;
  * @author :hao.li
  */
 
-public class MysqlSink_DP_30D extends RichSinkFunction<Tuple11<Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer>> {
+public class MysqlSink_DP_30D extends RichSinkFunction<Tuple3<String, String, Integer>> {
     private Properties properties;
     private Connection connection;
     static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
@@ -45,7 +46,7 @@ public class MysqlSink_DP_30D extends RichSinkFunction<Tuple11<Integer, Integer,
         connection = DriverManager.getConnection(mysqlUrl, userName
                 , passWord);//写入mysql数据库
 //        String sql = null;
-        String sql = "replace into SC_DP_SJDP(riqi,wo_num,bg_num,wb_num,qy_num,jk_num,w_leve_1,w_leve_2,w_leve_3,w_leve_4,w_level_all,js_time) values(?,?,?,?,?,?,?,?,?,?,?,?)";
+        String sql = "replace into `SC_DP_SJDP-30D`(riqi,name,alarm_level,num,js_time) values(?,?,?,?,?)";
         preparedStatement = connection.prepareStatement(sql);
         //insert sql在配置文件中
         super.open(parameters);
@@ -64,26 +65,17 @@ public class MysqlSink_DP_30D extends RichSinkFunction<Tuple11<Integer, Integer,
     }
 
     @Override
-    public void invoke(Tuple11<Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer> value, Context context) throws Exception {
-        //(标志，工单，变更，等级1，2，3，4，总和,维保，废弃，健康)
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+    public void invoke(Tuple3<String, String, Integer> value, Context context) throws Exception {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String riqi = sdf.format(System.currentTimeMillis());
         String js_time = sdf1.format(System.currentTimeMillis());
-
         try {
             preparedStatement.setString(1, riqi);
-            preparedStatement.setInt(2,value.f1);
-            preparedStatement.setInt(3,value.f2);
-            preparedStatement.setInt(4,value.f3);
-            preparedStatement.setInt(5,value.f4);
-            preparedStatement.setInt(6,value.f5);
-            preparedStatement.setInt(7,value.f6);
-            preparedStatement.setInt(8,value.f7);
-            preparedStatement.setInt(9,value.f8);
-            preparedStatement.setInt(10,value.f9);
-            preparedStatement.setInt(11,value.f10);
-            preparedStatement.setString(12,js_time);
+            preparedStatement.setString(2,value.f0);
+            preparedStatement.setString(3,value.f1);
+            preparedStatement.setInt(4,value.f2);
+            preparedStatement.setString(5,js_time);
             preparedStatement.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();

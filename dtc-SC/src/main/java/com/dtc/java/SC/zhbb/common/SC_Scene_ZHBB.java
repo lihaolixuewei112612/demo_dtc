@@ -1,7 +1,5 @@
-package com.dtc.java.SC.zhbb.scene_two;
+package com.dtc.java.SC.zhbb.common;
 
-import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.SC.common.PropertiesConstants;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
@@ -13,50 +11,86 @@ import org.apache.flink.api.java.operators.CoGroupOperator;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.operators.MapOperator;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 
 import java.text.SimpleDateFormat;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * @Author : lihao
- * Created on : 2020-04-14
- * @Description : 数据仓库--场景二代码
+ * Created on : 2020-04-15
+ * @Description : 综合表报
  */
-public class exec {
-    public static void main(String[] args) throws Exception {
-        final ParameterTool parameterTool = ExecutionEnvUtil.createParameterTool(args);
-        Map<String, String> stringStringMap = parameterTool.toMap();
-        Properties properties = new Properties();
-        for (String key : stringStringMap.keySet()) {
-            if (key.startsWith("mysql")) {
-                properties.setProperty(key, stringStringMap.get(key));
+public class SC_Scene_ZHBB {
+    /**
+     * 场景一
+     * */
+    public static void sc_Scence_one(ExecutionEnvironment env, String driver, String url, String username, String password) {
+        String sence_one_query_sql = "SELECT ifNull(y.`name`,'其他') AS sblx,ifnull(c.`name`,'其他') AS zlx,ifnull(m.`name`,'其他') AS cs,COUNT(l.`name`) AS gjsl from asset_category_mapping a left join asset b on a.asset_id=b.id \n" +
+                "left join asset_category c on c.id = a.asset_category_id LEFT JOIN alarm l ON a.asset_id=l.asset_id left join asset_category y on c.parent_id = y.id \n" +
+                "LEFT JOIN manufacturer m ON m.id=b.manufacturer_id GROUP BY c.`name`;";
+//生产环境使用
+//        String sql = "SELECT ifNull(y.`name`,'其他') AS sblx,ifnull(c.`name`,'其他') AS zlx,ifnull(m.`name`,'其他') AS cs,COUNT(l.`name`) AS gjsl from asset_category_mapping a left join asset b on a.asset_id=b.id \n" +
+//                "left join asset_category c on c.id = a.asset_category_id LEFT JOIN alarm l ON a.asset_id=l.asset_id and TO_DAYS(now())-TO_DAYS(l.time_occur) =1 left join asset_category y on c.parent_id = y.id \n" +
+//                "LEFT JOIN manufacturer m ON m.id=b.manufacturer_id GROUP BY c.`name`";
+
+        String sence_one_insert_sql = "replace INTO SC_ZHBB_ZYZC(riqi,`sblx`,`zlx`,`cs`,`gjsl`,`js_time`) VALUES (?,?,?,?,?,?)";
+        DataSource<Row> scene_one_query = env.createInput(JDBCInputFormat.buildJDBCInputFormat()
+                .setDrivername(driver)
+                .setDBUrl(url)
+                .setUsername(username)
+                .setPassword(password)
+                .setQuery(sence_one_query_sql)
+                .setRowTypeInfo(new RowTypeInfo(BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO))
+                .finish());
+
+        MapOperator<Row, Row> scene_one_query_map = scene_one_query.map(new MapFunction<Row, Row>() {
+            @Override
+            public Row map(Row row) throws Exception {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String riqi = sdf.format(System.currentTimeMillis());
+                String js_time = sdf1.format(System.currentTimeMillis());
+                String sblx = (String) row.getField(0);
+                String zle = (String) row.getField(1);
+                String cs = (String) row.getField(2);
+                Long gasl = (Long) row.getField(3);
+                Row row1 = new Row(6);
+                row1.setField(0, riqi);
+                row1.setField(1, sblx);
+                row1.setField(2, zle);
+                row1.setField(3, cs);
+                row1.setField(4, gasl);
+                row1.setField(5, js_time);
+                return row1;
             }
-        }
-        final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
+        });
+        scene_one_query_map.output(JDBCOutputFormat.buildJDBCOutputFormat()
+                .setDrivername(driver)
+                .setDBUrl(url)
+                .setUsername(username)
+                .setPassword(password)
+                .setQuery(sence_one_insert_sql)
+                .finish());
+    }
+/**
+ * 场景二
+ *
+ */
 
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-//        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a group by a.level_id,a.type_id) b \n" +
-//                "left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 group by a.level_id,a.type_id ) c on b.level_id= c.level_id) d ";
+    public static void sc_Scence_Two(ExecutionEnvironment env, String driver, String url, String username, String password)
+    {
+        //测试环境使用
+        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a group by a.level_id,a.type_id) b \n" +
+                "left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 group by a.level_id,a.type_id ) c on b.level_id= c.level_id) d ";
 
-        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a \n" +
-                "where TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by a.level_id,a.type_id) b left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 and TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by \n" +
-                "a.level_id,a.type_id ) c on b.level_id= c.level_id) d";
+        //正式生产环境使用
+//        String sql = "select d.level_id,d.type_id,IFNULL(d.xzNum,0) as m ,IFNULL(d.wclNum,0) as n,(IFNULL(d.xzNum,0)-IFNULL(d.wclNum,0)) as f from (select b.level_id,b.type_id,b.xzNum,c.wclNum from (select a.level_id,a.type_id,count(*) as xzNum from alarm a \n" +
+//                "where TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by a.level_id,a.type_id) b left join (select a.level_id,a.type_id,count(*) as wclNum from alarm a where a.`status`!=2 and TO_DAYS(now())-TO_DAYS(a.time_occur) =1 group by \n" +
+//                "a.level_id,a.type_id ) c on b.level_id= c.level_id) d";
+
         String insert_sql = "replace into SC_ZHBB_SCRENE_TWO(riqi,level_id,type_id,zs_Num,old_Num,wcl_Num,ycl_Num,js_time) values(?,?,?,?,?,?,?,?)";
         String sql_second = "select level_id,type_id,zs_Num,old_Num,wcl_Num,ycl_Num from SC_ZHBB_SCRENE_TWO where TO_DAYS(now())-TO_DAYS(riqi) =1";
-        env.getConfig().setGlobalJobParameters(parameterTool);
-
-
         DataSource<Row> input = env.createInput(JDBCInputFormat.buildJDBCInputFormat()
                 .setDrivername(driver)
                 .setDBUrl(url)
@@ -65,7 +99,6 @@ public class exec {
                 .setQuery(sql)
                 .setRowTypeInfo(new RowTypeInfo(BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO))
                 .finish());
-        input.print("zs: ");
 
         DataSource<Row> input1 = env.createInput(JDBCInputFormat.buildJDBCInputFormat()
                 .setDrivername(driver)
@@ -73,15 +106,14 @@ public class exec {
                 .setUsername(username)
                 .setPassword(password)
                 .setQuery(sql_second)
-                .setRowTypeInfo(new RowTypeInfo(BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO,BasicTypeInfo.INT_TYPE_INFO,BasicTypeInfo.INT_TYPE_INFO,BasicTypeInfo.INT_TYPE_INFO))
+                .setRowTypeInfo(new RowTypeInfo(BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO))
                 .finish());
-        input1.print("2: ");
         CoGroupOperator<Row, Row, Row> with = input.coGroup(input1).where(new First_one()).equalTo(new First_one()).with(new MyCoGrouper());
         MapOperator<Row, Row> map = with.map(new MapFunction<Row, Row>() {
             @Override
             public Row map(Row row) throws Exception {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-                SimpleDateFormat sdf1 = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 String riqi = sdf.format(System.currentTimeMillis());
                 String js_time = sdf1.format(System.currentTimeMillis());
                 String level_id = (String) row.getField(0);
@@ -110,12 +142,6 @@ public class exec {
                 .setPassword(password)
                 .setQuery(insert_sql)
                 .finish());
-
-
-//        map.print();
-
-        env.execute("WordCount Example");
-
     }
 
     static class MyCoGrouper
@@ -161,5 +187,4 @@ public class exec {
             return value.getField(0) + "_" + value.getField(1);
         }
     }
-
 }

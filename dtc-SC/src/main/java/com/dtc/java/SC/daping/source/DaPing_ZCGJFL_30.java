@@ -38,24 +38,38 @@ public class DaPing_ZCGJFL_30 extends RichSourceFunction<Tuple3<String,String,In
         String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
         String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
         String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
 
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
         connection = MySQLUtil.getConnection(driver, url, username, password);
 
         if (connection != null) {
-//            String sql = "select count(*) as AllNum from asset a where a.room is not null and a.partitions is not null and a.box is not null";
-            String sql = "select n.`name`,n.level_id,count(*) as AllNum from (select * from (select m.zc_name,m.level_id,m.parent_id as pd,count(*) as num from (select a.asset_id as a_id,c.parent_id,c.`name` as zc_name,alarm.level_id from asset_category_mapping a \n" +
-                    "left join asset b on a.asset_id=b.id left join asset_category c on c.id = a.asset_category_id left join alarm on alarm.asset_id= a.asset_id) m where m.a_id not in (select DISTINCT asset_id \n" +
-                    "from alarm b where b.`status`=2 ) GROUP BY m.zc_name,m.level_id having m.level_id!=\"\") x left join asset_category y on x.pd = y.id) n group by n.`name`,n.level_id ";
+            String sql = "select ifnull(n.p_name,'其他') as `name`,\n" +
+                    "case \n" +
+                    "when level_id=1 then '一般'\n" +
+                    "when level_id=2 then '较严重'\n" +
+                    "when level_id=3 then '严重'\n" +
+                    "when level_id=4 then '灾难'\n" +
+                    "end as level_id,\n" +
+                    "count(*) as AllNum from (select m.asset_id,m.pd,m.`name` as z_name,m.level_id,y.id,y.parent_id,y.`name` as p_name from (select a.asset_id,c.parent_id as pd,c.`name`,alarm.level_id from asset_category_mapping a left join asset b on a.asset_id=b.id \n" +
+                    "left join asset_category c on c.id = a.asset_category_id left join alarm on alarm.asset_id= a.asset_id) m left join asset_category y on m.pd=y.id) n group by n.p_name,n.level_id having n.level_id!=\"\"";
+//生产环境下使用
+//            String sql = "select ifnull(n.p_name,'其他') as `name`,\n" +
+//                    "case \n" +
+//                    "when level_id=1 then '一般'\n" +
+//                    "when level_id=2 then '较严重'\n" +
+//                    "when level_id=3 then '严重'\n" +
+//                    "when level_id=4 then '灾难'\n" +
+//                    "end as level_id,\n" +
+//                    "count(*) as AllNum from (select m.asset_id,m.pd,m.`name` as z_name,m.level_id,y.id,y.parent_id,y.`name` as p_name from (select a.asset_id,c.parent_id as pd,c.`name`,alarm.level_id from asset_category_mapping a left join asset b on a.asset_id=b.id and TO_DAYS(alarm.time_occur) = TO_DAYS(NOW())\n" +
+//                    "left join asset_category c on c.id = a.asset_category_id left join alarm on alarm.asset_id= a.asset_id) m left join asset_category y on m.pd=y.id) n group by n.p_name,n.level_id having n.level_id!=\"\"";
+
             ps = connection.prepareStatement(sql);
         }
     }
 
     @Override
     public void run(SourceContext<Tuple3<String,String,Integer>> ctx) throws Exception {
-        Tuple4<String, String, Short, String> test = null;
         int num = 0;
         while (isRunning) {
             ResultSet resultSet = ps.executeQuery();

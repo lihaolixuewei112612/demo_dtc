@@ -5,6 +5,8 @@ import com.dtc.java.SC.JaShiCang.model.ModelFirst;
 import com.dtc.java.SC.JaShiCang.model.ModelSecond;
 import com.dtc.java.SC.JaShiCang.model.ModelThree;
 import com.dtc.java.SC.daping.sink.MysqlSink_DP;
+import com.dtc.java.SC.daping.sink.MysqlSink_DP_30D;
+import com.dtc.java.SC.daping.sink.MysqlSink_DP_ZCDP;
 import com.dtc.java.SC.daping.source.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.CoGroupFunction;
@@ -79,8 +81,10 @@ public class DPComplete {
         tuple11DataStream.addSink(new MysqlSink_DP(properties));
 //        //30天告警分布
         DataStreamSource<Tuple3<String, String, Integer>> tuple3DataStreamSource = env.addSource(new DaPing_ZCGJFL_30()).setParallelism(1);
+        tuple3DataStreamSource.addSink(new MysqlSink_DP_30D(properties));
 //        //资产大盘
-//        DataStreamSource<Tuple3<String, String, Integer>> tuple3DataStreamSource1 = env.addSource(new DaPingZCDP()).setParallelism(1);
+        DataStreamSource<Tuple3<String, String, Integer>> tuple3DataStreamSource1 = env.addSource(new DaPingZCDP()).setParallelism(1);
+        tuple3DataStreamSource1.addSink(new MysqlSink_DP_ZCDP(properties));
         env.execute("com.dtc.java.SC sart");
     }
     private static DataStream<Tuple11<Integer,Integer, Integer,Integer,Integer,Integer, Integer,Integer,Integer,Integer, Integer>> Four_CGroup(
@@ -169,7 +173,6 @@ public class DPComplete {
             int wb = sourceEvent.f1;
             int fq =  sourceEvent.f2;
             int ZN = sourceEvent.f3-wb-fq ;
-
             return Tuple4.of(sourceEvent.f0, wb, fq, ZN);
         }
     }
@@ -207,7 +210,6 @@ public class DPComplete {
                         if(tuple4.f3==null){
                             tuple4.f3=0;
                         }
-
                         collector.collect(tuple4);
                     }
                 });
