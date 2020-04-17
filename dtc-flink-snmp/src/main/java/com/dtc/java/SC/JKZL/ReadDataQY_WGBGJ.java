@@ -1,9 +1,9 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.ZongShu;
+import com.dtc.java.SC.JKZL.model.ZongShu;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -63,7 +63,7 @@ public class ReadDataQY_WGBGJ extends RichSourceFunction<ZongShu> {
                 ZongShu order = new ZongShu(room,partitions,box,num,3);
                 ctx.collect(order);
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JFSBWGBGJ;//package com.dtc.java.shucang.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;//package com.dtc.java.shucang.JFSBWGBGJ;
 //
 //
 //import com.dtc.java.analytic.V1.alter.MySQLUtil;

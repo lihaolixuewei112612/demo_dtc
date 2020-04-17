@@ -1,4 +1,4 @@
-package com.dtc.java.SC.wdzl;
+package com.dtc.java.SC.WDZL;
 
 import com.dtc.java.SC.common.MySQLUtil;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -6,7 +6,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -15,7 +14,7 @@ import java.util.Map;
 
 /*我的总览 sink
 * */
-public class WdzlSinkV3 extends RichSinkFunction<Map<String, List>> {
+public class WdzlSink extends RichSinkFunction<Map<String, List>> {
     private ParameterTool parameterTool;
     private static Connection connection = null;
 

@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
 
 import com.dtc.java.SC.common.PropertiesConstants;

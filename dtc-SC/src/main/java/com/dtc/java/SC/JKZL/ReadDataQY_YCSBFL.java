@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
 
 
@@ -28,12 +28,14 @@ public class ReadDataQY_YCSBFL extends RichSourceFunction<Map<String,Integer>> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
@@ -58,7 +60,7 @@ public class ReadDataQY_YCSBFL extends RichSourceFunction<Map<String,Integer>> {
             log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
             ctx.collect(map);
             map.clear();
-            Thread.sleep(1000*6);
+            Thread.sleep(interval_time);
         }
 
     }

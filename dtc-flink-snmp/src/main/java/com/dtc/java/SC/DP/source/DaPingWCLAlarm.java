@@ -1,4 +1,4 @@
-package com.dtc.java.SC.daping.source;
+package com.dtc.java.SC.DP.source;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
@@ -60,7 +60,7 @@ public class DaPingWCLAlarm extends RichSourceFunction<Tuple2<String,Integer>> {
                 int num = resultSet.getInt("AllNum");
                 ctx.collect(Tuple2.of(type_id,num));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

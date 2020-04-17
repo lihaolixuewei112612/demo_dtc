@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JaShiCang.model;
+package com.dtc.java.SC.JSC.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,8 +1,7 @@
-package com.dtc.java.SC.daping.sink;
+package com.dtc.java.SC.DP.sink;
 
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
 import org.apache.flink.api.java.tuple.Tuple11;
-import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 

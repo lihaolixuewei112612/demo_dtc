@@ -1,8 +1,8 @@
 package com.dtc.java.SC.JGPF;
 
-import com.dtc.java.SC.JFSBWGBGJ.model.YCSB_LB_Model;
-import com.dtc.java.SC.JFSBWGBGJ.model.YCSB_LB_RESULT_Finally_Model;
-import com.dtc.java.SC.JFSBWGBGJ.model.YCSB_LB_RESULT_Model;
+import com.dtc.java.SC.JKZL.model.YCSB_LB_Model;
+import com.dtc.java.SC.JKZL.model.YCSB_LB_RESULT_Finally_Model;
+import com.dtc.java.SC.JKZL.model.YCSB_LB_RESULT_Model;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -149,7 +149,7 @@ public class test {
                 });
         return apply;
     }
-    
+
 
     private static class YCFB_Result_KeySelector implements KeySelector<YCSB_LB_Model, String> {
         @Override

@@ -1,4 +1,4 @@
-package com.dtc.java.SC.zhbb.common;
+package com.dtc.java.SC.ZHBB.common;
 
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.MapFunction;

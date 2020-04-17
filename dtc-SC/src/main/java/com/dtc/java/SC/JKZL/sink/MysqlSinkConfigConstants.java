@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JFSBWGBGJ.sink;
+package com.dtc.java.SC.JKZL.sink;
 
 /**
  * Created on 2019-09-12

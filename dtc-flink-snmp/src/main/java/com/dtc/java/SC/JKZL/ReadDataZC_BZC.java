@@ -1,9 +1,9 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.YCShu;
+import com.dtc.java.SC.JKZL.model.YCShu;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;

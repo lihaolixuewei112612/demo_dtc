@@ -1,13 +1,13 @@
-package com.dtc.java.SC.JaShiCang.exec;
+package com.dtc.java.SC.JSC.exec;
 
-import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.SC.JaShiCang.model.ModelFirst;
-import com.dtc.java.SC.JaShiCang.model.ModelSecond;
-import com.dtc.java.SC.JaShiCang.model.ModelThree;
-import com.dtc.java.SC.JaShiCang.sink.MysqlSinkJSC;
-import com.dtc.java.SC.JaShiCang.sink.MysqlSinkJSC_TOP;
-import com.dtc.java.SC.JaShiCang.sink.MysqlSinkJSC_YC;
-import com.dtc.java.SC.JaShiCang.source.*;
+import com.dtc.java.SC.JKZL.ExecutionEnvUtil;
+import com.dtc.java.SC.JSC.model.ModelFirst;
+import com.dtc.java.SC.JSC.model.ModelSecond;
+import com.dtc.java.SC.JSC.model.ModelThree;
+import com.dtc.java.SC.JSC.sink.MysqlSinkJSC;
+import com.dtc.java.SC.JSC.sink.MysqlSinkJSC_TOP;
+import com.dtc.java.SC.JSC.sink.MysqlSinkJSC_YC;
+import com.dtc.java.SC.JSC.source.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.JoinFunction;

@@ -62,7 +62,7 @@
 //                ZongShu order = new ZongShu(room, partitions, zc_name, num);
 //                ctx.collect(order);
 //            }
-//            Thread.sleep(1000 * 60);
+//            Thread.sleep(interval_time0);
 //        }
 //    }
 //

@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JaShiCang.sink;
+package com.dtc.java.SC.JSC.sink;
 
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
 import org.apache.flink.api.java.tuple.Tuple9;

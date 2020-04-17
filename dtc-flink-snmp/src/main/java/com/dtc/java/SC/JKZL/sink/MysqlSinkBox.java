@@ -1,7 +1,7 @@
-package com.dtc.java.SC.JFSBWGBGJ.sink;
+package com.dtc.java.SC.JKZL.sink;
 
 import com.dtc.java.analytic.V2.common.constant.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.BoxResultModel;
+import com.dtc.java.SC.JKZL.model.BoxResultModel;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 

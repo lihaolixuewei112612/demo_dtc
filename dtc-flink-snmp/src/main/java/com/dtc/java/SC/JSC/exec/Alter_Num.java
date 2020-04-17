@@ -1,8 +1,8 @@
-package com.dtc.java.SC.JaShiCang.exec;
+package com.dtc.java.SC.JSC.exec;
 
-import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.SC.JaShiCang.source.JSC_AllNum;
-import com.dtc.java.SC.JaShiCang.source.JSC_ZCAllNum;
+import com.dtc.java.SC.JKZL.ExecutionEnvUtil;
+import com.dtc.java.SC.JSC.source.JSC_AllNum;
+import com.dtc.java.SC.JSC.source.JSC_ZCAllNum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.MapFunction;

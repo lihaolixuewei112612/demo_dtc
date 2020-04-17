@@ -1,6 +1,5 @@
-package com.dtc.java.SC.JFSBWGBGJ.sink;
+package com.dtc.java.SC.JKZL.sink;
 
-import com.dtc.java.SC.common.MySQLUtil;
 import com.dtc.java.SC.common.PropertiesConstants;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.configuration.Configuration;

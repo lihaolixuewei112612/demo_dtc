@@ -1,7 +1,7 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
 
-import com.dtc.java.SC.JFSBWGBGJ.model.YCShu;
+import com.dtc.java.SC.JKZL.model.YCShu;
 import com.dtc.java.SC.common.MySQLUtil;
 import com.dtc.java.SC.common.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +28,14 @@ public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
@@ -60,7 +62,7 @@ public class ReadDataZC_BZC extends RichSourceFunction<YCShu> {
                 ycshu = new YCShu(room,partitions,box,zc,bzc);
                 ctx.collect(ycshu);
             }
-            Thread.sleep(1000*6);
+            Thread.sleep(interval_time);
         }
 
     }

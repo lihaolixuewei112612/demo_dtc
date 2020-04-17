@@ -1,13 +1,13 @@
-package com.dtc.java.SC.daping;
+package com.dtc.java.SC.DP;
 
-import com.dtc.java.SC.JFSBWGBGJ.ExecutionEnvUtil;
-import com.dtc.java.SC.JaShiCang.model.ModelFirst;
-import com.dtc.java.SC.JaShiCang.model.ModelSecond;
-import com.dtc.java.SC.JaShiCang.model.ModelThree;
-import com.dtc.java.SC.daping.sink.MysqlSink_DP;
-import com.dtc.java.SC.daping.sink.MysqlSink_DP_30D;
-import com.dtc.java.SC.daping.sink.MysqlSink_DP_ZCDP;
-import com.dtc.java.SC.daping.source.*;
+import com.dtc.java.SC.JKZL.ExecutionEnvUtil;
+import com.dtc.java.SC.JSC.model.ModelFirst;
+import com.dtc.java.SC.JSC.model.ModelSecond;
+import com.dtc.java.SC.JSC.model.ModelThree;
+import com.dtc.java.SC.DP.sink.MysqlSink_DP;
+import com.dtc.java.SC.DP.sink.MysqlSink_DP_30D;
+import com.dtc.java.SC.DP.sink.MysqlSink_DP_ZCDP;
+import com.dtc.java.SC.DP.source.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -27,9 +27,6 @@ import org.apache.flink.util.Collector;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
 
 
 /**

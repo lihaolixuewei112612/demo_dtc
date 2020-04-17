@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JaShiCang.source;
+package com.dtc.java.SC.JSC.source;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
@@ -61,7 +61,7 @@ public class JSC_CSSB_TOP_GJTJFX_1 extends RichSourceFunction<Tuple2<Integer,Int
                 int one_num = resultSet.getInt("NUM");
                 ctx.collect(Tuple2.of(one_num,1));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

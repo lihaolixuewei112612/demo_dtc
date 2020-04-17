@@ -60,7 +60,7 @@ public class ReadDataFM extends RichSourceFunction<Order> {
                 Order order = new Order(room, id);
                 ctx.collect(order);
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
 
     }

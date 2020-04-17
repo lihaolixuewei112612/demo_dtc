@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JaShiCang.source;
+package com.dtc.java.SC.JSC.source;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
@@ -63,7 +63,7 @@ public class JSC_ZC_Used_Num extends RichSourceFunction<Tuple2<String,Integer>> 
                 num = resultSet.getInt("num");
                 ctx.collect(Tuple2.of(name,num));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

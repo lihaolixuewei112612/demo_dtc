@@ -25,22 +25,15 @@ public class ReadDataFM extends RichSourceFunction<Order> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
             String sql = "select a.room,a.partitions,a.box,count(*) as num from asset a group by a.room,a.partitions,a.box having a.room is not null and a.partitions is not null and a.box is not null";
@@ -60,7 +53,7 @@ public class ReadDataFM extends RichSourceFunction<Order> {
                 Order order = new Order(room, id);
                 ctx.collect(order);
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
 
     }

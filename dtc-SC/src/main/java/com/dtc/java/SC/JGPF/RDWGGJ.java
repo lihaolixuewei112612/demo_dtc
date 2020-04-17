@@ -27,22 +27,15 @@ public class RDWGGJ extends RichSourceFunction<Map<Integer, String>> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
            String sql =  "select a.room,count(*) as num from asset a where a.id not in (select asset_id from alarm b where b.`status`=2 ) group by a.room having a.room is not null";
@@ -67,7 +60,7 @@ public class RDWGGJ extends RichSourceFunction<Map<Integer, String>> {
             log.info("=======select alarm notify from mysql, size = {}, map = {}", map.size(), map);
             ctx.collect(map);
             map.clear();
-            Thread.sleep(1000);
+            Thread.sleep(interval_time);
         }
 
     }

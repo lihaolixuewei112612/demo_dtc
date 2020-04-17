@@ -1,9 +1,9 @@
-package com.dtc.java.SC.JFSBWGBGJ;
+package com.dtc.java.SC.JKZL;
 
-import com.dtc.java.SC.JFSBWGBGJ.model.*;
-import com.dtc.java.SC.JFSBWGBGJ.sink.MysqlSinkBox;
-import com.dtc.java.SC.JFSBWGBGJ.sink.MysqlSinkPosition;
-import com.dtc.java.SC.JFSBWGBGJ.sink.MysqlSinkRoom;
+import com.dtc.java.SC.JKZL.model.*;
+import com.dtc.java.SC.JKZL.sink.MysqlSinkBox;
+import com.dtc.java.SC.JKZL.sink.MysqlSinkPosition;
+import com.dtc.java.SC.JKZL.sink.MysqlSinkRoom;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.utils.ParameterTool;

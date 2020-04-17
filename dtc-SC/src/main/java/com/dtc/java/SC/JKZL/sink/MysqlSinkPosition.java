@@ -1,8 +1,7 @@
-package com.dtc.java.SC.JFSBWGBGJ.sink;
+package com.dtc.java.SC.JKZL.sink;
 
-import com.dtc.java.SC.common.MySQLUtil;
 import com.dtc.java.SC.common.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.PositionResultModel;
+import com.dtc.java.SC.JKZL.model.PositionResultModel;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 

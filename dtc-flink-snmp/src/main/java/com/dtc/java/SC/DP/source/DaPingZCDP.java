@@ -1,4 +1,4 @@
-package com.dtc.java.SC.daping.source;
+package com.dtc.java.SC.DP.source;
 
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
@@ -62,7 +62,7 @@ public class DaPingZCDP extends RichSourceFunction<Tuple3<String, String, Intege
                 int num = resultSet.getInt("num");
                 ctx.collect(Tuple3.of(name, zc_name, num));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

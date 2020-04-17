@@ -3,7 +3,7 @@ package com.dtc.java.SC.JGPF;
 
 import com.dtc.java.analytic.V1.alter.MySQLUtil;
 import com.dtc.java.analytic.V1.common.constant.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.YCSB_LB_Model;
+import com.dtc.java.SC.JKZL.model.YCSB_LB_Model;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;

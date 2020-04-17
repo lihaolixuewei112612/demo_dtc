@@ -1,4 +1,4 @@
-package com.dtc.java.SC.daping.sink;
+package com.dtc.java.SC.DP.sink;
 
 import com.dtc.java.SC.common.MySQLUtil;
 import org.apache.flink.api.java.tuple.Tuple11;

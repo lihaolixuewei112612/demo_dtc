@@ -2,8 +2,8 @@ package com.dtc.java.SC.JGPF;
 
 
 import com.dtc.java.SC.common.MySQLUtil;
+import com.dtc.java.SC.JKZL.model.YCSB_LB_Model;
 import com.dtc.java.SC.common.PropertiesConstants;
-import com.dtc.java.SC.JFSBWGBGJ.model.YCSB_LB_Model;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
@@ -25,22 +25,15 @@ public class YCSB_LB extends RichSourceFunction<YCSB_LB_Model> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
-        String database = parameterTool.get(PropertiesConstants.MYSQL_DATABASE);
-        String host = parameterTool.get(PropertiesConstants.MYSQL_HOST);
-        String password = parameterTool.get(PropertiesConstants.MYSQL_PASSWORD);
-        String port = parameterTool.get(PropertiesConstants.MYSQL_PORT);
-        String username = parameterTool.get(PropertiesConstants.MYSQL_USERNAME);
-        String alarm_rule_table = parameterTool.get(PropertiesConstants.MYSQL_ALAEM_TABLE);
-
-        String driver = "com.mysql.jdbc.Driver";
-        String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useUnicode=true&characterEncoding=UTF-8";
-        connection = MySQLUtil.getConnection(driver, url, username, password);
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
+        connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
            String sql = "select a.asset_id,a.level_id,count(*) as num,b.`name`,b.ipv4 as ip,b.room,b.partitions,b.box from alarm a left join asset b on b.id =a.asset_id group by a.asset_id,a.level_id having b.room is not null and b.`partitions` is not null and b.box is not null";
@@ -64,7 +57,7 @@ public class YCSB_LB extends RichSourceFunction<YCSB_LB_Model> {
                 YCSB_LB_Model ycsb_lb_model = new YCSB_LB_Model(asset_id,level_id,num,name,ip,room,partitions,box);
                 ctx.collect(ycsb_lb_model);
             }
-            Thread.sleep(1000);
+            Thread.sleep(interval_time);
         }
 
     }

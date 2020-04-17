@@ -132,4 +132,7 @@ public class PropertiesConstants {
     public static final String MYSQL_ALAEM_TABLE = "mysql.alarm_rule_table";
     public static final String MYSQL_WINDOWS_TABLE = "mysql.windows_disk_sql";
 
+    //sc
+    public static final String INTERVAL_TIME="interval_time";
+
 }

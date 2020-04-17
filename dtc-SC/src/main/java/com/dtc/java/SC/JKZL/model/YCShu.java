@@ -1,4 +1,4 @@
-package com.dtc.java.SC.JFSBWGBGJ.model;
+package com.dtc.java.SC.JKZL.model;
 
 import lombok.*;
 

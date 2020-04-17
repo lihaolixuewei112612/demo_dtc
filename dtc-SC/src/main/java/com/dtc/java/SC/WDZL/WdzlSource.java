@@ -1,6 +1,7 @@
-package com.dtc.java.SC.wdzl;
+package com.dtc.java.SC.WDZL;
 
 import com.dtc.java.SC.common.MySQLUtil;
+import com.dtc.java.SC.common.PropertiesConstants;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 
@@ -12,14 +13,16 @@ import java.util.*;
 /*
  * 我的总览 source
  * */
-public class WdzlSourceV3 extends RichSourceFunction<Map<String, List>> {
+public class WdzlSource extends RichSourceFunction<Map<String, List>> {
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
     private static Connection connection = null;
+    private long interval_time;
 
     @Override
     public void run(SourceContext<Map<String, List>> sourceContext) throws Exception {
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
         HashMap<String, List> map = new HashMap<String, List>();
         while(isRunning) {
@@ -41,7 +44,7 @@ public class WdzlSourceV3 extends RichSourceFunction<Map<String, List>> {
         map.put("ZCZYFB", selectZCZYFB());
         sourceContext.collect(map);
             map.clear();
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
 
         }
     }

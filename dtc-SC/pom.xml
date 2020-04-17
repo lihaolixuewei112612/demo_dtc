@@ -28,7 +28,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.dtc.java.SC.zhbb.sc_Scene_Exec</mainClass>
+                            <mainClass>com.dtc.java.SC.ZHBB.sc_Scene_Exec</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
