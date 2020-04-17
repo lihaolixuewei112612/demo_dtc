@@ -2,6 +2,7 @@ package com.dtc.java.SC.JSC.source;
 
 
 import com.dtc.java.SC.common.MySQLUtil;
+import com.dtc.java.SC.common.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -24,12 +25,14 @@ public class JSC_Alarm_level extends RichSourceFunction<Tuple2<String,Integer>> 
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
         if (connection != null) {
             String sql = "SELECT a.level_id,count(*) as AllNum FROM alarm a where TO_DAYS(a.time_occur) = TO_DAYS(NOW()) group by a.level_id having a.level_id!=\"\"";
@@ -47,7 +50,7 @@ public class JSC_Alarm_level extends RichSourceFunction<Tuple2<String,Integer>> 
                 int num = resultSet.getInt("AllNum");
                 ctx.collect(Tuple2.of(level_id,num));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

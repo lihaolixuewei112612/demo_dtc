@@ -2,6 +2,7 @@ package com.dtc.java.SC.JSC.source;
 
 
 import com.dtc.java.SC.common.MySQLUtil;
+import com.dtc.java.SC.common.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
@@ -25,12 +26,14 @@ public class JSC_ZCAllNum extends RichSourceFunction<Tuple2<Integer,Integer>> {
     private PreparedStatement ps = null;
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
+    private long interval_time;
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
 
         if (connection != null) {
@@ -51,7 +54,7 @@ public class JSC_ZCAllNum extends RichSourceFunction<Tuple2<Integer,Integer>> {
                 num = resultSet.getInt("AllNum");
                 ctx.collect(Tuple2.of(2,num));
             }
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.dtc.java.SC.JSC.gldp;
 
 import com.dtc.java.SC.common.MySQLUtil;
+import com.dtc.java.SC.common.PropertiesConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
@@ -20,10 +21,12 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
     private volatile boolean isRunning = true;
     private ParameterTool parameterTool;
     private static Connection connection = null;
+    private long interval_time;
 
     @Override
     public void run(SourceContext<Map<String, String>> sourceContext) throws Exception {
         parameterTool = (ParameterTool) (getRuntimeContext().getExecutionConfig().getGlobalJobParameters());
+        interval_time = Long.parseLong(parameterTool.get(PropertiesConstants.INTERVAL_TIME));
         connection = MySQLUtil.getConnection(parameterTool);
         HashMap<String, String> map = new HashMap<String, String>();
         while(isRunning) {
@@ -57,7 +60,7 @@ public class Lreand extends RichSourceFunction<Map<String, String>> {
             map.put("qt", selectC().get("qt"));
             sourceContext.collect(map);
             map.clear();
-            Thread.sleep(1000 * 6);
+            Thread.sleep(interval_time);
         }
 
     }
